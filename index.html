@@ -74,6 +74,9 @@ h1{font-size:22px;font-weight:800}
 #big-time.paused{color:var(--gold)}
 #ring-sub{font-size:13px;color:var(--dim)}
 #p-hint{text-align:center;color:var(--dim);font-size:13px;min-height:18px;margin-bottom:14px}
+#demo-box{display:none;margin:0 auto 10px;width:150px;height:150px}
+#demo-box.on{display:block}
+#demo-box svg{width:100%;height:100%;display:block}
 .btn-manual{background:linear-gradient(135deg,#a3e635,#22d3a5);color:#0a0f05;margin-bottom:12px}
 .p-controls{display:flex;gap:10px}
 .btn-ctrl{flex:1;padding:14px;background:var(--card);border:1px solid var(--line);color:var(--text);font-weight:600}
@@ -163,6 +166,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div id="p-exname"></div>
     <div id="p-setline"></div>
     <div class="dots" id="p-dots"></div>
+    <div id="demo-box"></div>
     <div class="ring-wrap">
       <svg width="240" height="240" viewBox="0 0 240 240">
         <circle class="ring-bg" cx="120" cy="120" r="106"></circle>
@@ -459,6 +463,44 @@ $('#btn-sound2').onclick=toggleSound;
 'use strict';
 /* ---------- 训练页 ---------- */
 var CIRC=2*Math.PI*106;
+/* ---------- 英文语音（系统自然声优先，预合成音频兜底） ---------- */
+var VOICE_NAMES=['ten','three','two','one','go','rest','done'];
+var voiceBuffers={},voiceEls={};
+function initVoices(){
+  try{if(window.speechSynthesis)speechSynthesis.getVoices();}catch(e){}
+  VOICE_NAMES.forEach(function(k){
+    try{var a=new Audio('voice/'+k+'.m4a');a.preload='auto';voiceEls[k]=a;}catch(e){}
+    try{
+      fetch('voice/'+k+'.m4a').then(function(r){return r.ok?r.arrayBuffer():null;})
+        .then(function(ab){
+          if(ab&&AC)AC.decodeAudioData(ab).then(function(b){voiceBuffers[k]=b;}).catch(function(){});
+        }).catch(function(){});
+    }catch(e){}
+  });
+}
+function unlockVoices(){
+  Object.keys(voiceEls).forEach(function(k){
+    try{var p=voiceEls[k].play();
+      if(p&&p.then)p.then(function(){voiceEls[k].pause();try{voiceEls[k].currentTime=0;}catch(e){}}).catch(function(){});
+    }catch(e){}
+  });
+}
+function say(clip,text){
+  if(!soundOn)return false;
+  try{
+    if(window.speechSynthesis&&speechSynthesis.getVoices().length){
+      var u=new SpeechSynthesisUtterance(text||clip);
+      u.lang='en-US';u.rate=1.05;
+      speechSynthesis.cancel();speechSynthesis.speak(u);
+      return true;
+    }
+  }catch(e){}
+  var b=voiceBuffers[clip];
+  if(b&&AC){try{var s=AC.createBufferSource();s.buffer=b;s.connect(AC.destination);s.start();return true;}catch(e){}}
+  var a=voiceEls[clip];
+  if(a){try{try{a.currentTime=0;}catch(e){}var p=a.play();if(p&&p.catch)p.catch(function(){});return true;}catch(e){}}
+  return false;
+}
 function show(v){
   ['config','player','done','history'].forEach(function(x){$('#view-'+x).classList.toggle('active',x===v);});
 }
@@ -501,16 +543,19 @@ function startWorkout(){
     paused:false,startTs:Date.now(),doneSets:0,lastBeep:-1,timer:null};
   show('player');
   requestWake();
+  unlockVoices();
   startExercise();
   session.timer=setInterval(tick,200);
 }
 function startExercise(){
   var e=exercises[session.exIdx];
-  session.phase='exercise';session.lastBeep=-1;session.paused=false;
+  session.phase='exercise';session.lastBeep=-1;session.paused=false;session.voiceAt={};
   $('#p-exname').textContent=e.name;
   $('#p-setline').textContent='第 '+session.setIdx+' / '+e.sets+' 组';
   $('#btn-done').hidden=!(e.dur<=0);
   setPill('exercise','动作中');
+  var bt=$('#big-time');bt.style.transform='';bt.style.color='';
+  if(window.FIT_DEMO){try{$('#demo-box').classList.add('on');FIT_DEMO.play(e.name);}catch(err){}}
   renderRingColor();renderDots();updateProgress();updatePauseBtn();
   if(e.dur>0){
     session.total=e.dur;session.remaining=e.dur;
@@ -518,8 +563,8 @@ function startExercise(){
     $('#big-time').textContent=clock(e.dur);setRing(1);
     $('#ring-sub').textContent='坚持住';
     $('#p-hint').textContent='跟着倒计时完成动作';
-    $('#big-time').classList.remove('paused');
-    sGo();vibrate(80);
+    bt.classList.remove('paused');
+    vibrate(80);
   }else{
     session.total=0;session.remaining=0;
     $('#big-time').textContent='💪';$('#big-time').classList.remove('paused');
@@ -531,33 +576,46 @@ function startExercise(){
 function startRest(){
   var e=exercises[session.exIdx],rest=e.rest||0;
   if(rest<=0){advance();return;}
-  session.phase='rest';session.lastBeep=-1;session.paused=false;
+  session.phase='rest';session.lastBeep=-1;session.paused=false;session.voiceAt={};
   session.total=rest;session.remaining=rest;
   session.endAt=Date.now()+rest*1000;
   $('#big-time').textContent=clock(rest);setRing(1);
+  var bt=$('#big-time');bt.style.transform='';bt.style.color='';bt.classList.remove('paused');
+  if(window.FIT_DEMO){try{FIT_DEMO.stop();$('#demo-box').classList.remove('on');}catch(err){}}
   setPill('rest','休息一下');
   $('#ring-sub').textContent='休息';
   $('#p-hint').textContent=nextLabel();
   $('#btn-done').hidden=true;
-  $('#big-time').classList.remove('paused');
   renderRingColor();updatePauseBtn();
-  sDing();vibrate([120,80,120]);
+  if(!say('rest','Take a rest'))sDing();
+  vibrate([120,80,120]);
 }
 function advance(){
   session.doneSets++;
-  var e=exercises[session.exIdx];
-  if(session.setIdx<e.sets){session.setIdx++;startExercise();}
-  else if(session.exIdx<exercises.length-1){session.exIdx++;session.setIdx=1;startExercise();}
-  else finish();
+  var e=exercises[session.exIdx],last=false;
+  if(session.setIdx<e.sets){session.setIdx++;}
+  else if(session.exIdx<exercises.length-1){session.exIdx++;session.setIdx=1;}
+  else last=true;
+  if(last){finish();return;}
+  if(!say('go','Go!'))sGo();
+  startExercise();
 }
 function tick(){
   if(!session||session.paused||session.total<=0)return;
   session.remaining=Math.max(0,(session.endAt-Date.now())/1000);
   var whole=Math.ceil(session.remaining);
-  $('#big-time').textContent=clock(whole);
+  var bt=$('#big-time');
+  bt.textContent=clock(whole);
   setRing(session.remaining/session.total);
-  if(session.phase==='rest'&&whole<=3&&whole>=1&&whole!==session.lastBeep){
-    session.lastBeep=whole;sTick();vibrate(60);
+  if(whole<=10&&whole>=1&&session.remaining>0){
+    var f=Math.max(0,Math.min(1,whole-session.remaining));
+    bt.style.transform='scale('+(1+0.35*Math.pow(1-f,3)).toFixed(3)+')';
+    bt.style.color=whole<=3?'var(--red)':'var(--gold)';
+    var v=session.voiceAt,NUM={3:'three',2:'two',1:'one'};
+    if(whole===10&&!v.ten){v.ten=1;say('ten','Ten seconds left');}
+    if(whole<=3&&!v['n'+whole]){v['n'+whole]=1;if(!say(NUM[whole],String(whole)))sTick();vibrate(60);}
+  }else{
+    bt.style.transform='';bt.style.color='';
   }
   if(session.remaining<=0){
     if(session.phase==='exercise')startRest();else advance();
@@ -577,10 +635,13 @@ function finish(){
   stopTimer();session=null;
   $('#d-sets').textContent=doneSets;
   $('#d-time').textContent=secs>=60?Math.floor(secs/60)+'分'+String(secs%60).padStart(2,'0')+'秒':secs+'秒';
-  show('done');sFanfare();vibrate([150,80,150,80,220]);
+  show('done');
+  if(!say('done','Workout complete. Nice job!'))sFanfare();
+  vibrate([150,80,150,80,220]);
 }
 function endWorkout(){
   if(session&&session.doneSets>0)pushRecord(false);
+  if(window.FIT_DEMO){try{FIT_DEMO.stop();$('#demo-box').classList.remove('on');}catch(err){}}
   stopTimer();session=null;quitArm=0;endArm=0;
   var be=$('#btn-end');be.textContent='■ 结束';be.classList.remove('danger-arm');
   $('#btn-quit').textContent='✕';
@@ -634,7 +695,7 @@ document.addEventListener('visibilitychange',function(){
     try{localStorage.setItem('fit_exercises',JSON.stringify(exercises));}catch(e){}
     cfgRev=1;
   }
-  syncSound();renderConfig();
+  initVoices();syncSound();renderConfig();
 })();
 </script>
 <script>
@@ -754,5 +815,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 </script>
+<script src="demo.js?v=3"></script>
 </body>
 </html>
