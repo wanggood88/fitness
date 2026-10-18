@@ -75,6 +75,24 @@ h1{font-size:22px;font-weight:800;background:var(--g-rain);background-clip:text;
 .p-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .p-progress{height:6px;border-radius:3px;background:var(--card2);overflow:hidden;margin-bottom:20px}
 #p-progress-fill{height:100%;background:linear-gradient(90deg,var(--lime),var(--sky));width:0%;border-radius:3px}
+.p-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;position:relative}
+.p-bar .p-progress{flex:1;margin-bottom:0}
+.p-exsel{display:flex;align-items:center;gap:6px;flex:none;max-width:46%;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--g-sheen);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.p-exsel:active{transform:scale(.97)}
+#p-exsel-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:8em}
+.p-exsel svg{width:11px;height:7px;flex:none;color:var(--dim)}
+#exsel-back{position:fixed;inset:0;z-index:44;display:none}
+#exsel-back.show{display:block}
+#exsel{position:absolute;top:calc(100% + 10px);left:0;width:min(340px,92vw);max-height:min(430px,62vh);overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px;z-index:45;display:none;box-shadow:0 14px 44px rgba(0,0,0,.55)}
+#exsel.show{display:block}
+.exsel-title{font-size:12px;color:var(--dim);padding:6px 8px 8px}
+.exsel-row{width:100%;display:flex;align-items:center;gap:10px;padding:11px 10px;border:none;border-radius:12px;background:transparent;color:var(--text);font-family:inherit;cursor:pointer;text-align:left;font-size:15px}
+.exsel-row:active{background:var(--card2)}
+.exsel-row.cur{background:rgba(163,230,53,.10);box-shadow:inset 0 0 0 1px rgba(163,230,53,.4)}
+.exsel-idx{width:26px;height:26px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--lime);flex:none}
+.exsel-name{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exsel-meta{font-size:12px;color:var(--dim);flex:none}
+.exsel-meta.ok{color:var(--lime)}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:999px;font-size:13px;font-weight:700}
 .pill.exercise{background:linear-gradient(135deg,rgba(163,230,53,.18),rgba(34,211,165,.14));color:var(--lime)}
 .pill.rest{background:linear-gradient(135deg,rgba(56,189,248,.18),rgba(129,140,248,.14));color:var(--sky)}
@@ -176,9 +194,10 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 #b-text:focus{border-color:var(--lime)}
 #saved-tip{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);background:#0f2b1a;color:var(--lime);border:1px solid rgba(163,230,53,.4);padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:60;display:none}
 /* ---- 全文字渐变化 ---- */
-#p-setline,#p-hint,.subtitle,.summary,.ex-meta,.hs-meta,.hs-names,.hs-empty,.stat span,.f-label,.st-unit,.chip,#m-media-info,#done-sub{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#p-setline,#p-hint,.subtitle,.summary,.ex-meta,.hs-meta,.hs-names,.hs-empty,.stat span,.f-label,.st-unit,.chip,#m-media-info,#done-sub,.exsel-title,.exsel-meta{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .ex-meta b{background:var(--g-rest);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.ex-name,.sheet h2,.sec,.hs-date{background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.ex-name,.sheet h2,.sec,.hs-date,.exsel-name{background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#p-exsel-name{background:var(--g-text);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .btn-ctrl span{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .btn-ctrl.danger-arm span{background:var(--g-red);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .btn-ghost span{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
@@ -201,7 +220,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       "ring ctrl";
     column-gap:28px;align-content:center}
   .p-top{grid-area:top;margin-bottom:6px}
-  .p-progress{grid-area:prog;margin-bottom:8px}
+  .p-bar{grid-area:prog;margin-bottom:8px}
   .ring-wrap{grid-area:ring;width:min(300px,74vh);height:min(300px,74vh);margin:0;justify-self:center;align-self:center}
   #p-pill{grid-area:pill;justify-self:start}
   #p-exname{grid-area:exname;font-size:23px;margin:8px 0 2px}
@@ -244,7 +263,12 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <button class="icon-btn" id="btn-quit">✕</button>
       <button class="icon-btn" id="btn-sound2">🔊</button>
     </div>
-    <div class="p-progress"><div id="p-progress-fill"></div></div>
+    <div class="p-bar">
+      <button class="p-exsel" id="p-exsel"><span id="p-exsel-name">—</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="p-progress"><div id="p-progress-fill"></div></div>
+      <div id="exsel"><div class="exsel-title">选择动作</div><div id="exsel-list"></div></div>
+    </div>
+    <div id="exsel-back"></div>
     <span class="pill exercise" id="p-pill">动作中</span>
     <div id="p-exname"></div>
     <div id="p-setline"></div>
@@ -747,7 +771,7 @@ function startWorkout(){
   if(!exercises.length)return;
   ac();
   session={exIdx:0,setIdx:1,phase:'exercise',remaining:0,total:0,endAt:0,
-    paused:false,startTs:Date.now(),doneSets:0,lastBeep:-1,timer:null};
+    paused:false,startTs:Date.now(),doneSets:0,doneMap:{},lastBeep:-1,timer:null};
   show('player');
   requestWake();
   unlockVoices();
@@ -839,6 +863,7 @@ function startExercise(){
   $('#p-setline').textContent='第 '+session.setIdx+' / '+e.sets+' 组';
   $('#btn-done').hidden=!(e.dur<=0);
   setPill('exercise','动作中');
+  renderTop();
   var bt=$('#big-time');bt.style.transform='';bt.style.color='';
   playDemo(e);
   renderRingColor();renderDots();updateProgress();updatePauseBtn();
@@ -869,6 +894,7 @@ function startRest(){
   var bt=$('#big-time');bt.style.transform='';bt.style.color='';bt.classList.remove('paused');
   stopDemoMedia();
   setPill('rest','休息一下');
+  renderTop();
   $('#ring-sub').textContent='休息';
   $('#p-hint').textContent=nextLabel();
   $('#btn-done').hidden=true;
@@ -878,6 +904,7 @@ function startRest(){
 }
 function advance(){
   session.doneSets++;
+  session.doneMap[session.exIdx]=(session.doneMap[session.exIdx]||0)+1;
   var e=exercises[session.exIdx],last=false;
   if(session.setIdx<e.sets){session.setIdx++;}
   else if(session.exIdx<exercises.length-1){session.exIdx++;session.setIdx=1;}
@@ -927,7 +954,7 @@ function finish(){
   var secs=Math.round((Date.now()-session.startTs)/1000);
   var doneSets=session.doneSets;
   pushRecord(true);
-  stopTimer();session=null;
+  stopTimer();exselClose();session=null;
   $('#d-sets').textContent=doneSets;
   $('#d-time').textContent=secs>=60?Math.floor(secs/60)+'分'+String(secs%60).padStart(2,'0')+'秒':secs+'秒';
   show('done');
@@ -937,7 +964,7 @@ function finish(){
 function endWorkout(){
   if(session&&session.doneSets>0)pushRecord(false);
   stopDemoMedia();
-  $('#rest-time').hidden=true;stopTimer();session=null;quitArm=0;endArm=0;
+  $('#rest-time').hidden=true;stopTimer();exselClose();session=null;quitArm=0;endArm=0;
   var be=$('#btn-end');$('#lb-end').textContent='结束';be.classList.remove('danger-arm');
   $('#btn-quit').textContent='✕';
   show('config');
@@ -948,6 +975,41 @@ function renderRingColor(){
   fg.classList.toggle('exercise',session.phase==='exercise');
   fg.style.stroke='';
 }
+/* ---------- 顶部动作选择器 ---------- */
+function renderTop(){
+  var e=exercises[session&&session.exIdx];
+  if(e)$('#p-exsel-name').textContent=e.name;
+}
+function exselOpen(){
+  if(!session||!exercises.length)return;
+  var box=$('#exsel-list');box.innerHTML='';
+  exercises.forEach(function(e,i){
+    var done=(session.doneMap[i]||0)>=e.sets,cur=(i===session.exIdx);
+    var row=document.createElement('button');row.className='exsel-row'+(cur?' cur':'');
+    var idx=document.createElement('span');idx.className='exsel-idx';idx.textContent=i+1;
+    var nm=document.createElement('span');nm.className='exsel-name';nm.textContent=e.name;
+    var mt=document.createElement('span');mt.className='exsel-meta'+(done?' ok':'');
+    mt.textContent=cur?('第 '+session.setIdx+' / '+e.sets+' 组'):(done?'✓ 已完成':(e.sets+' 组'));
+    row.appendChild(idx);row.appendChild(nm);row.appendChild(mt);
+    row.onclick=function(){exselJump(i);};
+    box.appendChild(row);
+  });
+  $('#exsel').classList.add('show');$('#exsel-back').classList.add('show');
+}
+function exselClose(){$('#exsel').classList.remove('show');$('#exsel-back').classList.remove('show');}
+function exselJump(i){
+  exselClose();
+  if(!session)return;
+  if(i===session.exIdx)return;
+  if(session.phase==='rest'){ /* 休息中跳走：刚完成的一组照常计入 */
+    session.doneSets++;
+    session.doneMap[session.exIdx]=(session.doneMap[session.exIdx]||0)+1;
+  }
+  session.exIdx=i;session.setIdx=1;
+  startExercise();
+}
+$('#p-exsel').onclick=exselOpen;
+$('#exsel-back').onclick=exselClose;
 
 /* 训练页按钮 */
 $('#btn-start').onclick=startWorkout;
