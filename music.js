@@ -3,6 +3,10 @@
 'use strict';
 (function () {
   function mid(id) { return document.getElementById(id); }
+  /* 弹层内 JS 动态创建的按钮用同体系单色 SVG（与 .cicon 一致） */
+  var SVG_PLAY = '<svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 2.9v10.2c0 1 1.05 1.55 1.85 1.02l7.9-5.1c.75-.48.75-1.55 0-2.03l-7.9-5.1C5.65 1.35 4.6 1.9 4.6 2.9z"/></svg>';
+  var SVG_PAUSE = '<svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.2" width="3.6" height="11.6" rx="1.6"/><rect x="9.4" y="2.2" width="3.6" height="11.6" rx="1.6"/></svg>';
+  var SVG_TRASH = '<svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.1 4.3V3.4c0-.61.5-1.1 1.1-1.1h1.6c.6 0 1.1.49 1.1 1.1v.9M4.6 4.9l.47 6.8c.06.8.72 1.42 1.52 1.42h2.82c.8 0 1.46-.62 1.52-1.42l.47-6.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
 
   /* ---------- IndexedDB（独立于演示媒体的 fit_media_v1） ---------- */
   function mdb() {
@@ -171,10 +175,12 @@
     var t = tracks[cur];
     var lab = mid('mbar-title');
     if (lab) lab.textContent = t ? (t.name + ' · ' + (cur + 1) + '/' + tracks.length) : '—';
-    var pb = mid('mbar-play');
-    if (pb) pb.textContent = playing ? '⏸' : '▶';
-    var mb = mid('mbar-mute');
-    if (mb) mb.textContent = mute ? '🔇' : '🔊';
+    var on = mid('ic-mplay'), off = mid('ic-mpause');
+    if (on) on.hidden = playing;
+    if (off) off.hidden = !playing;
+    var vOn = mid('ic-mvol'), vOff = mid('ic-mmut');
+    if (vOn) vOn.hidden = mute;
+    if (vOff) vOff.hidden = !mute;
     if (bar) bar.hidden = !tracks.length || (!workoutMode && !previewMode);
     msState(playing ? 'playing' : 'paused');
     if (window.__mmRender) window.__mmRender();
@@ -209,14 +215,14 @@
       row.className = 'mm-row' + ((previewMode || workoutMode) && i === cur ? ' cur' : '');
       var pb = document.createElement('button');
       pb.className = 'mm-play';
-      pb.textContent = (i === cur && playing) ? '⏸' : '▶';
+      pb.innerHTML = (i === cur && playing) ? SVG_PAUSE : SVG_PLAY;
       pb.onclick = function () {
         if (i === cur && playing) { previewMode = false; setPaused(true); renderSheet(); }
         else { previewMode = true; workoutMode = false; loadTrack(i, true); }
       };
       var nm = document.createElement('div'); nm.className = 'mm-name'; nm.textContent = t.name;
       var sz = document.createElement('span'); sz.className = 'mm-size'; sz.textContent = fmtSize(t.size);
-      var db = document.createElement('button'); db.className = 'mm-del'; db.textContent = '🗑';
+      var db = document.createElement('button'); db.className = 'mm-del'; db.innerHTML = SVG_TRASH;
       db.onclick = function () {
         mReq('readwrite', function (st) { return st.delete(t.id); }).then(function () {
           return refresh();
