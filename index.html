@@ -153,6 +153,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <button class="btn btn-primary" id="btn-add">＋ 添加动作</button>
     <button class="btn btn-ghost" id="btn-start" style="margin-top:10px">▶ 开始训练</button>
     <button class="btn btn-ghost" id="btn-backup" style="margin-top:0">💾 备份 / 恢复配置</button>
+    <button class="btn btn-ghost" id="btn-mix" style="margin-top:0">🎵 音乐共存</button>
   </section>
 
   <!-- 训练页 -->
@@ -463,44 +464,77 @@ $('#btn-sound2').onclick=toggleSound;
 'use strict';
 /* ---------- 训练页 ---------- */
 var CIRC=2*Math.PI*106;
-/* ---------- 英文语音（系统自然声优先，预合成音频兜底） ---------- */
+/* ---------- 英文语音（共存模式：WebAudio 优先，尽量不打断后台音乐） ---------- */
 var VOICE_NAMES=['ten','three','two','one','go','rest','done'];
-var voiceBuffers={},voiceEls={};
+var voiceBuffers={},voiceEls={},voicePending={};
+var mixMode=localStorage.getItem('fit_mix')!=='0';
+function toggleMix(){
+  mixMode=!mixMode;
+  localStorage.setItem('fit_mix',mixMode?'1':'0');
+  syncMix();savedFlash();
+}
+function syncMix(){
+  var b=document.getElementById('btn-mix');
+  if(b)b.textContent=mixMode?'🎵 音乐共存：已开启':'🎵 音乐共存：已关闭';
+}
+function fetchDecode(k){
+  if(voicePending[k])return;
+  voicePending[k]=1;
+  fetch('voice/'+k+'.m4a').then(function(r){return r.ok?r.arrayBuffer():null;})
+    .then(function(ab){voicePending[k]=0;
+      if(ab&&AC&&!voiceBuffers[k])AC.decodeAudioData(ab).then(function(b){voiceBuffers[k]=b;}).catch(function(){});
+    }).catch(function(){voicePending[k]=0;});
+}
+function ensureBuffers(){if(AC)VOICE_NAMES.forEach(fetchDecode);}
 function initVoices(){
   try{if(window.speechSynthesis)speechSynthesis.getVoices();}catch(e){}
+  try{ac();ensureBuffers();}catch(e){} /* 提前建上下文并解码，无需手势 */
   VOICE_NAMES.forEach(function(k){
     try{var a=new Audio('voice/'+k+'.m4a');a.preload='auto';voiceEls[k]=a;}catch(e){}
-    try{
-      fetch('voice/'+k+'.m4a').then(function(r){return r.ok?r.arrayBuffer():null;})
-        .then(function(ab){
-          if(ab&&AC)AC.decodeAudioData(ab).then(function(b){voiceBuffers[k]=b;}).catch(function(){});
-        }).catch(function(){});
-    }catch(e){}
   });
 }
 function unlockVoices(){
+  ensureBuffers();
+  if(mixMode)return; /* 共存模式不解锁媒体元素，避免抢占音频会话 */
   Object.keys(voiceEls).forEach(function(k){
     try{var p=voiceEls[k].play();
       if(p&&p.then)p.then(function(){voiceEls[k].pause();try{voiceEls[k].currentTime=0;}catch(e){}}).catch(function(){});
     }catch(e){}
   });
 }
-function say(clip,text){
-  if(!soundOn)return false;
+function sysSay(text){
   try{
     if(window.speechSynthesis&&speechSynthesis.getVoices().length){
-      var u=new SpeechSynthesisUtterance(text||clip);
+      var u=new SpeechSynthesisUtterance(text||'');
       u.lang='en-US';u.rate=1.05;
       speechSynthesis.cancel();speechSynthesis.speak(u);
       return true;
     }
   }catch(e){}
+  return false;
+}
+function playBuffer(clip){
   var b=voiceBuffers[clip];
   if(b&&AC){try{var s=AC.createBufferSource();s.buffer=b;s.connect(AC.destination);s.start();return true;}catch(e){}}
+  return false;
+}
+function playEl(clip){
   var a=voiceEls[clip];
   if(a){try{try{a.currentTime=0;}catch(e){}var p=a.play();if(p&&p.catch)p.catch(function(){});return true;}catch(e){}}
   return false;
 }
+function say(clip,text){
+  if(!soundOn)return false;
+  if(mixMode){
+    if(playBuffer(clip))return true;
+    if(sysSay(text||clip))return true;
+    return playEl(clip); /* 最后兜底 */
+  }
+  if(sysSay(text||clip))return true;
+  if(playBuffer(clip))return true;
+  return playEl(clip);
+}
+$('#btn-mix').onclick=toggleMix;
 function show(v){
   ['config','player','done','history'].forEach(function(x){$('#view-'+x).classList.toggle('active',x===v);});
 }
@@ -695,7 +729,7 @@ document.addEventListener('visibilitychange',function(){
     try{localStorage.setItem('fit_exercises',JSON.stringify(exercises));}catch(e){}
     cfgRev=1;
   }
-  initVoices();syncSound();renderConfig();
+  initVoices();syncSound();syncMix();renderConfig();
 })();
 </script>
 <script>
