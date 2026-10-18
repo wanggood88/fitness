@@ -845,9 +845,9 @@ function demoAdopt(el){
   demoMedia={el:el,objUrl:null};
 }
 function useBuiltin(mu,e){
-  if(mu&&mu.indexOf('3d:')===0&&window.FIT3D){
-    var cv3=FIT3D.play(mu.slice(3));
-    if(cv3){demoAdopt(cv3);return;}
+  if(mu&&mu.indexOf('3d:')===0){
+    if(window.FIT3D){var cv3=FIT3D.play(mu.slice(3));if(cv3){demoAdopt(cv3);return;}}
+    demoFallback(e);return;
   }
   if(mu){demoMakeEl(isVideoUrl(mu),mu,null);return;}
   demoFallback(e);
@@ -871,14 +871,16 @@ function demoMakeEl(isVideo,src,objUrl){
   };
   var b=$('#demo-box');b.innerHTML='';b.classList.add('on');b.appendChild(el);
 }
-/* 内置演示：深蹲/俯卧撑为实时 3D 卡通小人（相机环绕）；其余为 Wikimedia Commons 公开素材（CC BY-SA 4.0 Wensceslao/Danielflefil、CC BY-SA 3.0 Mohamed Ouda、CDC 公有领域） */
+/* 内置演示：8 个动作全部为实时 3D 卡通小人（相机环绕）；WebGL 不可用时回退火柴人 */
 var BUILTIN_MEDIA={
   '深蹲':'3d:squat',
   '俯卧撑':'3d:pushup',
-  '卷腹':'media/crunch.gif',
-  '开合跳':'media/jumpingjacks.gif',
-  '弓步蹲':'media/lunge.gif',
-  '高抬腿':'media/highknees.gif'
+  '平板支撑':'3d:plank',
+  '卷腹':'3d:crunch',
+  '开合跳':'3d:jack',
+  '弓步蹲':'3d:lunge',
+  '靠墙静蹲':'3d:wall',
+  '高抬腿':'3d:knees'
 };
 function playDemo(e){
   stopDemoMedia();
@@ -1231,6 +1233,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 </script>
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
-<script src="demo3d.js?v=6"></script>
+<script src="demo3d.js?v=7"></script>
 </body>
 </html>
