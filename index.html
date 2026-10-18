@@ -214,7 +214,21 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 @media (orientation:landscape) and (max-height:500px){
   #app{max-width:none;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
     padding:calc(env(safe-area-inset-top) + 8px) max(16px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 10px) max(16px,env(safe-area-inset-left))}
-  #view-config.active,#view-done.active,#view-history.active{width:100%;max-width:520px;margin:0 auto}
+  #view-done.active,#view-history.active{width:100%;max-width:520px;margin:0 auto}
+  /* 主页面：双栏（左动作列表内部滚动 / 右操作固定可见） */
+  #view-config.active{display:grid;width:100%;max-width:none;margin:0;
+    grid-template-columns:minmax(0,1fr) 235px;
+    grid-template-areas:"top top" "sub sub" "sum sum" "chips side" "list side";
+    grid-template-rows:auto auto auto auto minmax(0,1fr);
+    column-gap:24px}
+  #view-config .topbar{grid-area:top}
+  #view-config .subtitle{grid-area:sub;margin-bottom:8px}
+  #view-config .summary{grid-area:sum;margin-bottom:6px}
+  #view-config .chips{grid-area:chips;padding-bottom:8px}
+  #view-config .ex-list{grid-area:list;overflow-y:auto;min-height:0;max-height:calc(100vh - 190px);max-height:calc(100dvh - 190px);margin-bottom:0}
+  #cfg-side{grid-area:side;display:flex;flex-direction:column;gap:10px}
+  #cfg-side .btn{margin-top:0!important;font-size:14px;padding:12px}
+  #btn-start{order:-1}
   #view-player.active{flex:1;display:grid;min-height:0;
     grid-template-columns:minmax(240px,300px) minmax(0,1fr);
     grid-template-areas:
@@ -260,10 +274,12 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div class="summary" id="summary"></div>
     <div class="chips" id="chips"></div>
     <div class="ex-list" id="ex-list"></div>
-    <button class="btn btn-primary" id="btn-add">＋ 添加动作</button>
-    <button class="btn btn-ghost" id="btn-start" style="margin-top:10px"><span>▶ 开始训练</span></button>
-    <button class="btn btn-ghost" id="btn-backup" style="margin-top:0"><span>💾 备份 / 恢复配置</span></button>
-    <button class="btn btn-ghost" id="btn-mix" style="margin-top:0"><span>🎵 音乐共存</span></button>
+    <div id="cfg-side">
+      <button class="btn btn-primary" id="btn-add">＋ 添加动作</button>
+      <button class="btn btn-ghost" id="btn-start" style="margin-top:10px"><span>▶ 开始训练</span></button>
+      <button class="btn btn-ghost" id="btn-backup" style="margin-top:0"><span>💾 备份 / 恢复配置</span></button>
+      <button class="btn btn-ghost" id="btn-mix" style="margin-top:0"><span>🎵 音乐共存</span></button>
+    </div>
   </section>
 
   <!-- 训练页 -->
