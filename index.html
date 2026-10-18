@@ -127,7 +127,9 @@ h1{font-size:22px;font-weight:800;background:var(--g-rain);background-clip:text;
 #fs-tip{color:#fff;opacity:.55;font-size:13px;pointer-events:none}
 .media-row{display:flex;gap:10px;align-items:center;margin-top:10px}
 .media-row .btn-ctrl{flex:none;padding:11px 14px;font-size:14px}
-#m-media-info{font-size:12px;color:var(--dim);margin-top:8px;min-height:15px}
+#m-media-info{font-size:12px;margin-top:8px;min-height:24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#m-media-text{flex:1;min-width:0;overflow-wrap:anywhere}
+#m-media-clear{flex:none;display:inline-flex;align-items:center;padding:3px 12px;font-size:12px;font-weight:700;line-height:1.4;border-radius:999px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.12);color:var(--red);font-family:inherit;cursor:pointer}
 #m-media-preview{margin-top:10px;text-align:center;display:none}
 #m-media-preview.on{display:block}
 #m-media-preview video,#m-media-preview img{max-width:100%;max-height:150px;border-radius:12px;border:1px solid var(--line)}
@@ -203,7 +205,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .q-btns{display:flex;gap:10px}
 .q-btns .btn{padding:13px;font-size:15px}
 /* ---- 全文字渐变化 ---- */
-#p-setline,#p-hint,.subtitle,.summary,.ex-meta,.hs-meta,.hs-names,.hs-empty,.stat span,.f-label,.st-unit,.chip,#m-media-info,#done-sub,.exsel-title,.exsel-meta,.q-sub{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#p-setline,#p-hint,.subtitle,.summary,.ex-meta,.hs-meta,.hs-names,.hs-empty,.stat span,.f-label,.st-unit,.chip,#m-media-text,#done-sub,.exsel-title,.exsel-meta,.q-sub{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .ex-meta b{background:var(--g-rest);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .ex-name,.sheet h2,.sec,.hs-date,.exsel-name,.q-title{background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #p-exsel-name{background:var(--g-text);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
@@ -389,9 +391,8 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div class="media-row">
       <input type="file" id="m-media-file" accept="video/*,image/gif,image/webp" hidden>
       <button class="btn btn-ctrl" id="m-media-pick">🎬 选择视频/动图</button>
-      <button class="btn btn-ctrl" id="m-media-clear" hidden>🗑 清除素材</button>
     </div>
-    <div id="m-media-info">未设置，将使用内置演示</div>
+    <div id="m-media-info"><span id="m-media-text">未设置，将使用内置演示</span><button id="m-media-clear" hidden>🗑 清除素材</button></div>
     <div id="m-media-preview"></div>
     <span class="f-label">在线演示链接（可选，本地素材优先）</span>
     <input type="url" id="m-url" placeholder="https://…/demo.mp4 或 .gif" autocomplete="off" autocapitalize="off">
@@ -646,7 +647,7 @@ $('#m-save').onclick=saveModal;
 /* ---------- 弹层：演示媒体选择 ---------- */
 var pendingMedia=null,previewUrl=null;
 function setMediaInfo(txt,closable){
-  $('#m-media-info').textContent=txt;
+  $('#m-media-text').textContent=txt;
   $('#m-media-clear').hidden=!closable;
 }
 function clearPreview(){
@@ -660,7 +661,7 @@ function resetMediaUI(name){
   if(!name)return;
   mediaGet(name).then(function(b){
     if(pendingMedia||editingIdx<0)return;
-    if(b){pendingMedia={t:'keep'};setMediaInfo('已设置本地演示 ✓（可更换或清除）',true);}
+    if(b){pendingMedia={t:'keep'};setMediaInfo('已设置本地演示 ✓（可更换）',true);}
     else if($('#m-url').value.trim())setMediaInfo('未设置本地素材，将使用在线链接',false);
   }).catch(function(){});
 }
