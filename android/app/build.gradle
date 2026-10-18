@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.wanggood88.fit'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.wanggood88.fit'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('KSTORE') ?: '/nonexistent/keystore.p12')
+            storePassword System.getenv('KPASS') ?: 'unset'
+            keyAlias 'fitkey'
+            keyPassword System.getenv('KPASS') ?: 'unset'
+            storeType 'PKCS12'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.browser:browser:1.8.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

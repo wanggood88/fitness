@@ -1,0 +1,61 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Restore signing keystore
+        run: |
+          printf '%s' "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/fit-keystore.p12"
+          echo "KSTORE=$RUNNER_TEMP/fit-keystore.p12" >> "$GITHUB_ENV"
+
+      - name: Build release APK
+        run: gradle -p android assembleRelease --no-daemon --stacktrace
+        env:
+          KPASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fit-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Publish to rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          OUT=fit-1.0.apk
+          cp "$APK" "$OUT"
+          if gh release view apk-latest -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload apk-latest "$OUT" --clobber
+            echo "updated existing release"
+          else
+            gh release create apk-latest "$OUT" \
+              --title "健身提醒 Android（最新版）" \
+              --notes "直接下载 APK 安装。首次安装需在系统设置里允许「安装未知应用」。之后更新直接覆盖安装即可，签名一致不会丢数据。"
+          fi
