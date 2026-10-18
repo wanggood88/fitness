@@ -821,6 +821,7 @@ function isVideoUrl(u){return /\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(u);}
 function demoBoxClear(){var b=$('#demo-box');b.classList.remove('on');b.innerHTML='';}
 function stopDemoMedia(){
   closeFsView();
+  if(window.FIT3D){try{FIT3D.stop();}catch(e){}}
   if(demoMedia){
     var el=demoMedia.el;
     try{if(el&&el.tagName==='VIDEO'){el.pause();el.removeAttribute('src');el.load();}}catch(e){}
@@ -832,6 +833,23 @@ function stopDemoMedia(){
 }
 function demoFallback(e){
   if(window.FIT_DEMO){try{$('#demo-box').classList.add('on');FIT_DEMO.play(e.name);}catch(err){}}
+}
+function demoAdopt(el){
+  if(demoMedia&&demoMedia.objUrl){try{URL.revokeObjectURL(demoMedia.objUrl);}catch(e){}}
+  el.className='demo-media';
+  el.onclick=function(){
+    if($('#fs-view').classList.contains('show'))closeFsView();else openFsView();
+  };
+  var b=$('#demo-box');b.innerHTML='';b.classList.add('on');b.appendChild(el);
+  demoMedia={el:el,objUrl:null};
+}
+function useBuiltin(mu,e){
+  if(mu&&mu.indexOf('3d:')===0&&window.FIT3D){
+    var cv3=FIT3D.play(mu.slice(3));
+    if(cv3){demoAdopt(cv3);return;}
+  }
+  if(mu){demoMakeEl(isVideoUrl(mu),mu,null);return;}
+  demoFallback(e);
 }
 function demoMakeEl(isVideo,src,objUrl){
   if(demoMedia&&demoMedia.objUrl){try{URL.revokeObjectURL(demoMedia.objUrl);}catch(e){}}
@@ -852,10 +870,10 @@ function demoMakeEl(isVideo,src,objUrl){
   };
   var b=$('#demo-box');b.innerHTML='';b.classList.add('on');b.appendChild(el);
 }
-/* 内置公开演示素材（Wikimedia Commons：CC BY-SA 4.0 Wensceslao/Danielflefil、CC BY-SA 3.0 Mohamed Ouda、CDC 公有领域）；深蹲/俯卧撑为本应用自绘火柴人动画 */
+/* 内置演示：深蹲/俯卧撑为实时 3D 卡通小人（相机环绕）；其余为 Wikimedia Commons 公开素材（CC BY-SA 4.0 Wensceslao/Danielflefil、CC BY-SA 3.0 Mohamed Ouda、CDC 公有领域） */
 var BUILTIN_MEDIA={
-  '深蹲':'media/gen_squat.gif',
-  '俯卧撑':'media/gen_pushup.gif',
+  '深蹲':'3d:squat',
+  '俯卧撑':'3d:pushup',
   '卷腹':'media/crunch.gif',
   '开合跳':'media/jumpingjacks.gif',
   '弓步蹲':'media/lunge.gif',
@@ -868,14 +886,10 @@ function playDemo(e){
   mediaGet(e.name).then(function(blob){
     if(!guard())return;
     if(blob){var u=URL.createObjectURL(blob);demoMakeEl((blob.type||'').indexOf('video')===0,u,u);return;}
-    var mu=e.url||BUILTIN_MEDIA[e.name];
-    if(mu){demoMakeEl(isVideoUrl(mu),mu,null);return;}
-    demoFallback(e);
+    useBuiltin(e.url||BUILTIN_MEDIA[e.name],e);
   }).catch(function(){
     if(!guard())return;
-    var mu=e.url||BUILTIN_MEDIA[e.name];
-    if(mu){demoMakeEl(isVideoUrl(mu),mu,null);return;}
-    demoFallback(e);
+    useBuiltin(e.url||BUILTIN_MEDIA[e.name],e);
   });
 }
 function openFsView(){
@@ -1215,5 +1229,7 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 }
 </script>
 <script src="demo.js?v=3"></script>
+<script src="three.min.js"></script>
+<script src="demo3d.js?v=6"></script>
 </body>
 </html>
