@@ -73,6 +73,8 @@ h1{font-size:22px;font-weight:800}
 #big-time{display:none;font-size:48px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px}
 #big-time.paused{color:var(--gold)}
 #ring-sub{display:none;font-size:13px;color:var(--dim)}
+#rest-time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:min(68px,17vw);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;pointer-events:none}
+#rest-time[hidden]{display:none}
 #p-hint{text-align:center;color:var(--dim);font-size:13px;min-height:18px;margin-bottom:14px}
 #demo-box{position:absolute;inset:0;display:none;margin:0}
 #demo-box.on{display:flex;align-items:center;justify-content:center}
@@ -185,7 +187,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
         <circle class="ring-bg" cx="120" cy="120" r="106"></circle>
         <circle id="ring-fg" class="exercise" cx="120" cy="120" r="106"></circle>
       </svg>
-      <div class="ring-center"><div id="demo-box"></div><div id="big-time" hidden></div><div id="ring-sub" hidden></div></div>
+      <div class="ring-center"><div id="demo-box"></div><div id="rest-time" hidden></div><div id="big-time" hidden></div><div id="ring-sub" hidden></div></div>
     </div>
     <div id="p-hint"></div>
     <button class="btn btn-manual" id="btn-done" hidden>✔ 完成本组</button>
@@ -628,15 +630,7 @@ function playEl(clip){
   return false;
 }
 function say(clip,text){
-  if(!soundOn)return false;
-  if(mixMode){
-    if(playBuffer(clip))return true;
-    if(sysSay(text||clip))return true;
-    return playEl(clip); /* 最后兜底 */
-  }
-  if(sysSay(text||clip))return true;
-  if(playBuffer(clip))return true;
-  return playEl(clip);
+  return true; /* 语音已全部取消 */
 }
 $('#btn-mix').onclick=toggleMix;
 function show(v){
@@ -765,6 +759,7 @@ $('#fs-view').addEventListener('click',function(ev){if(ev.target.id!=='fs-tip')c
 function startExercise(){
   var e=exercises[session.exIdx];
   session.phase='exercise';session.lastBeep=-1;session.paused=false;session.voiceAt={};
+  $('#rest-time').hidden=true;
   $('#p-exname').textContent=e.name;
   $('#p-setline').textContent='第 '+session.setIdx+' / '+e.sets+' 组';
   $('#btn-done').hidden=!(e.dur<=0);
@@ -795,6 +790,7 @@ function startRest(){
   session.total=rest;session.remaining=rest;
   session.endAt=Date.now()+rest*1000;
   $('#big-time').textContent=clock(rest);setRing(1);
+  var rt=$('#rest-time');rt.hidden=false;rt.textContent=String(Math.ceil(rest));rt.style.color='';rt.style.opacity='';
   var bt=$('#big-time');bt.style.transform='';bt.style.color='';bt.classList.remove('paused');
   stopDemoMedia();
   setPill('rest','休息一下');
@@ -822,6 +818,14 @@ function tick(){
   var bt=$('#big-time');
   bt.textContent=clock(whole);
   setRing(session.remaining/session.total);
+  var rt=$('#rest-time');
+  if(session.phase==='rest'){
+    rt.textContent=String(whole);
+    if(whole<=10&&session.remaining>0){
+      rt.style.color=whole<=3?'var(--red)':'var(--gold)';
+      rt.style.opacity=(Math.floor(session.remaining*2)%2)?'1':'0.25';
+    }else{rt.style.color='';rt.style.opacity='';}
+  }
   if(whole<=10&&whole>=1&&session.remaining>0){
     var f=Math.max(0,Math.min(1,whole-session.remaining));
     bt.style.transform='scale('+(1+0.35*Math.pow(1-f,3)).toFixed(3)+')';
@@ -857,7 +861,7 @@ function finish(){
 function endWorkout(){
   if(session&&session.doneSets>0)pushRecord(false);
   stopDemoMedia();
-  stopTimer();session=null;quitArm=0;endArm=0;
+  $('#rest-time').hidden=true;stopTimer();session=null;quitArm=0;endArm=0;
   var be=$('#btn-end');be.textContent='■ 结束';be.classList.remove('danger-arm');
   $('#btn-quit').textContent='✕';
   show('config');
