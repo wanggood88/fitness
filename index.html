@@ -259,6 +259,24 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
   #modal,#bmodal{align-items:center}
   .sheet{border-radius:20px;max-height:calc(100vh - 24px)}
 }
+/* ---------- 训练音乐（fit-v21） ---------- */
+.p-controls{flex-wrap:wrap}
+#mbar{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:4px}
+#mbar[hidden]{display:none}
+#mbar button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
+#mbar button:active{transform:scale(.92)}
+#mbar-title{flex:1;min-width:0;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+#mmsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
+#mmsheet.show{display:flex}
+.mm-row{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.mm-row.cur{box-shadow:inset 0 0 0 1px rgba(163,230,53,.45)}
+.mm-play{width:34px;height:34px;border-radius:50%;flex:none;border:none;background:#232b3b;color:var(--lime);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mm-name{flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mm-size{font-size:11px;color:var(--dim);flex:none}
+.mm-del{width:30px;height:30px;border-radius:9px;border:none;background:#232b3b;color:var(--red);font-size:13px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
+.mm-empty{color:var(--dim);font-size:13px;line-height:1.6;padding:6px 2px 2px}
+#mm-vol{width:150px;accent-color:#a3e635}
+.mm-shufbtn{padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:#232b3b;color:var(--text);font-size:14px;font-weight:700;cursor:pointer;min-width:72px;font-family:inherit}
 </style>
 </head>
 <body>
@@ -280,6 +298,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <button class="btn btn-primary" id="btn-add">＋ 添加动作</button>
       <button class="btn btn-ghost" id="btn-start" style="margin-top:10px"><span>▶ 开始训练</span></button>
       <button class="btn btn-ghost" id="btn-backup" style="margin-top:0"><span>💾 备份 / 恢复配置</span></button>
+      <button class="btn btn-ghost" id="btn-music" style="margin-top:0"><span>🎧 训练音乐库</span></button>
       <button class="btn btn-ghost" id="btn-mix" style="margin-top:0"><span>🎵 音乐共存</span></button>
     </div>
   </section>
@@ -318,6 +337,13 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <button class="btn btn-ctrl" id="btn-pause"><svg class="cicon" id="ic-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.2" width="3.6" height="11.6" rx="1.6"/><rect x="9.4" y="2.2" width="3.6" height="11.6" rx="1.6"/></svg><svg class="cicon" id="ic-resume" viewBox="0 0 16 16" hidden aria-hidden="true"><path d="M4.6 2.9v10.2c0 1 1.05 1.55 1.85 1.02l7.9-5.1c.75-.48.75-1.55 0-2.03l-7.9-5.1C5.65 1.35 4.6 1.9 4.6 2.9z"/></svg><span id="lb-pause">暂停</span></button>
       <button class="btn btn-ctrl" id="btn-skip"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.6 4.1v7.8c0 1 1.1 1.55 1.9 1.02l5.9-3.9c.75-.5.75-1.55 0-2.05L4.5 3.08c-.8-.53-1.9.02-1.9 1.02z"/><rect x="11.5" y="2.8" width="2.7" height="10.4" rx="1.35"/></svg><span>跳过</span></button>
       <button class="btn btn-ctrl" id="btn-end"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.6" y="2.6" width="10.8" height="10.8" rx="2.6"/></svg><span id="lb-end">结束</span></button>
+      <div id="mbar" hidden>
+        <button id="mbar-prev" aria-label="上一首">⏮</button>
+        <button id="mbar-play" aria-label="播放/暂停">▶</button>
+        <button id="mbar-next" aria-label="下一首">⏭</button>
+        <div id="mbar-title">—</div>
+        <button id="mbar-mute" aria-label="静音">🔊</button>
+      </div>
     </div>
   </section>
 
@@ -417,6 +443,29 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <button class="btn btn-primary" id="b-import" style="flex:1.4">📥 导入</button>
     </div>
     <span class="f-label" id="b-diag" style="margin-top:12px"></span>
+  </div>
+</div>
+<!-- 训练音乐 弹层 -->
+<div id="mmsheet">
+  <div class="sheet">
+    <h2>🎧 训练音乐</h2>
+    <span class="f-label">训练时循环播放、自动切歌；支持锁屏 / 控制中心切歌（iOS 15+，以真机为准）。</span>
+    <div id="mm-list"></div>
+    <div class="media-row">
+      <input type="file" id="mm-file" accept="audio/*,.mp3,.m4a,.wav,.aac,.flac" multiple hidden>
+      <button class="btn btn-ctrl" id="mm-add" style="flex:1">＋ 从「文件」导入音乐</button>
+    </div>
+    <div class="st-row">
+      <span class="f-label">音量</span>
+      <div class="stepper-mid"><input type="range" id="mm-vol" min="0" max="100" step="1"><span class="st-unit" id="mm-vol-lab">80%</span></div>
+    </div>
+    <div class="st-row">
+      <span class="f-label">播放顺序</span>
+      <div class="stepper-mid"><button class="mm-shufbtn" id="mm-shuf">顺序</button></div>
+    </div>
+    <span class="f-label">说明：音频只存本机（IndexedDB），不随配置备份导出；iPhone 上音量跟随系统音量。</span>
+    <div class="f-err" id="mm-err"></div>
+    <div class="sheet-btns"><button class="btn btn-primary" id="mm-close">完成</button></div>
   </div>
 </div>
 <div id="saved-tip">已保存 ✓</div>
@@ -813,6 +862,7 @@ function startWorkout(){
   show('player');
   requestWake();
   unlockVoices();
+  if(window.FITMUSIC)FITMUSIC.startWorkout();
   startExercise();
   session.timer=setInterval(tick,200);
 }
@@ -1001,6 +1051,7 @@ function togglePause(){
   if(!session||session.total<=0)return;
   if(session.paused){session.endAt=Date.now()+session.remaining*1000;session.paused=false;}
   else{session.remaining=Math.max(0,(session.endAt-Date.now())/1000);session.paused=true;}
+  if(window.FITMUSIC)FITMUSIC.setPaused(session.paused);
   updatePauseBtn();
 }
 function stopTimer(){if(session&&session.timer){clearInterval(session.timer);session.timer=null;}releaseWake();}
@@ -1009,6 +1060,7 @@ function finish(){
   var doneSets=session.doneSets;
   pushRecord(true);
   stopTimer();exselClose();session=null;
+  if(window.FITMUSIC)FITMUSIC.stopWorkout();
   $('#d-sets').textContent=doneSets;
   $('#d-time').textContent=secs>=60?Math.floor(secs/60)+'分'+String(secs%60).padStart(2,'0')+'秒':secs+'秒';
   show('done');
@@ -1023,6 +1075,7 @@ function endWorkout(){
   if(session&&session.doneSets>0)pushRecord(false);
   stopDemoMedia();
   $('#rest-time').hidden=true;stopTimer();exselClose();session=null;endArm=0;
+  if(window.FITMUSIC)FITMUSIC.stopWorkout();
   var be=$('#btn-end');$('#lb-end').textContent='结束';be.classList.remove('danger-arm');
   show('config');
 }
@@ -1234,5 +1287,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
+<script src="music.js?v=2"></script>
 </body>
 </html>
