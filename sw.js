@@ -1,5 +1,5 @@
-var CACHE = 'fit-v17';
-var ASSETS = ['./', './index.html', './icon-180.png', './icon-512.png', './manifest.json', './demo.js',
+var CACHE = 'fit-v18';
+var ASSETS = ['./', './index.html', './icon-180.png', './icon-512.png', './manifest.json', './demo.js', './three.min.js', './demo3d.js',
   './voice/ten.m4a', './voice/three.m4a', './voice/two.m4a', './voice/one.m4a',
   './voice/go.m4a', './voice/rest.m4a', './voice/done.m4a',
   './media/gen_squat.gif', './media/gen_pushup.gif', './media/crunch.gif', './media/jumpingjacks.gif', './media/lunge.gif', './media/highknees.gif',
