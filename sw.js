@@ -1,8 +1,9 @@
-var CACHE = 'fit-v7';
+var CACHE = 'fit-v8';
 var ASSETS = ['./', './index.html', './icon-180.png', './icon-512.png', './manifest.json', './demo.js',
   './voice/ten.m4a', './voice/three.m4a', './voice/two.m4a', './voice/one.m4a',
   './voice/go.m4a', './voice/rest.m4a', './voice/done.m4a',
-  './media/squat.mp4', './media/pushup.gif', './media/crunch.gif', './media/jumpingjacks.gif', './media/lunge.gif', './media/highknees.gif'];
+  './media/squat.mp4', './media/pushup.gif', './media/crunch.gif', './media/jumpingjacks.gif', './media/lunge.gif', './media/highknees.gif',
+  './splash/splash_750x1334.png', './splash/splash_1125x2436.png', './splash/splash_1170x2532.png', './splash/splash_1179x2556.png', './splash/splash_1284x2778.png', './splash/splash_1290x2796.png', './splash/splash_1206x2622.png', './splash/splash_1320x2868.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
