@@ -193,10 +193,19 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 #b-text{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:12px;font-family:ui-monospace,Menlo,monospace;outline:none;resize:none;line-height:1.5}
 #b-text:focus{border-color:var(--lime)}
 #saved-tip{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);background:#0f2b1a;color:var(--lime);border:1px solid rgba(163,230,53,.4);padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:60;display:none}
+/* ---- 退出训练确认弹窗 ---- */
+#qmodal{position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+#qmodal.show{display:flex}
+.qcard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 20px 20px;width:100%;max-width:320px;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.55)}
+.q-emoji{font-size:42px;margin-bottom:10px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.4))}
+.q-title{font-size:19px;font-weight:800;margin-bottom:8px}
+.q-sub{font-size:13px;margin-bottom:20px;line-height:1.6}
+.q-btns{display:flex;gap:10px}
+.q-btns .btn{padding:13px;font-size:15px}
 /* ---- 全文字渐变化 ---- */
-#p-setline,#p-hint,.subtitle,.summary,.ex-meta,.hs-meta,.hs-names,.hs-empty,.stat span,.f-label,.st-unit,.chip,#m-media-info,#done-sub,.exsel-title,.exsel-meta{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#p-setline,#p-hint,.subtitle,.summary,.ex-meta,.hs-meta,.hs-names,.hs-empty,.stat span,.f-label,.st-unit,.chip,#m-media-info,#done-sub,.exsel-title,.exsel-meta,.q-sub{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .ex-meta b{background:var(--g-rest);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.ex-name,.sheet h2,.sec,.hs-date,.exsel-name{background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.ex-name,.sheet h2,.sec,.hs-date,.exsel-name,.q-title{background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #p-exsel-name{background:var(--g-text);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .btn-ctrl span{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .btn-ctrl.danger-arm span{background:var(--g-red);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
@@ -394,6 +403,18 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
   </div>
 </div>
 <div id="saved-tip">已保存 ✓</div>
+<!-- 退出训练确认弹窗 -->
+<div id="qmodal">
+  <div class="qcard">
+    <div class="q-emoji">🤔</div>
+    <div class="q-title">退出训练？</div>
+    <div class="q-sub" id="q-sub"></div>
+    <div class="q-btns">
+      <button class="btn btn-ctrl" id="q-cancel"><span>继续训练</span></button>
+      <button class="btn btn-ctrl danger-arm" id="q-ok"><span>确定退出</span></button>
+    </div>
+  </div>
+</div>
 <div id="fs-view"><span id="fs-tip">点击任意处退出全屏</span></div>
 
 <script>
@@ -420,7 +441,7 @@ var PRESETS=[
   {name:'靠墙静蹲',sets:3,dur:40,rest:60},
   {name:'高抬腿',sets:3,dur:30,rest:30}
 ];
-var exercises=[], session=null, editingIdx=-1, endArm=0, quitArm=0, wakeLock=null;
+var exercises=[], session=null, editingIdx=-1, endArm=0, wakeLock=null;
 var soundOn=localStorage.getItem('fit_sound')!=='0';
 
 /* 内置默认动作（固化在应用文件里，存储丢失时的兜底） */
@@ -962,11 +983,14 @@ function finish(){
   vibrate([150,80,150,80,220]);
 }
 function endWorkout(){
+  if(session&&session.phase==='rest'){ /* 休息中退出：刚完成的一组照常计入（与跳过/跳走语义一致） */
+    session.doneSets++;
+    session.doneMap[session.exIdx]=(session.doneMap[session.exIdx]||0)+1;
+  }
   if(session&&session.doneSets>0)pushRecord(false);
   stopDemoMedia();
-  $('#rest-time').hidden=true;stopTimer();exselClose();session=null;quitArm=0;endArm=0;
+  $('#rest-time').hidden=true;stopTimer();exselClose();session=null;endArm=0;
   var be=$('#btn-end');$('#lb-end').textContent='结束';be.classList.remove('danger-arm');
-  $('#btn-quit').textContent='✕';
   show('config');
 }
 function renderRingColor(){
@@ -1027,10 +1051,13 @@ $('#btn-end').onclick=function(){
 };
 $('#btn-quit').onclick=function(){
   if(!session)return;
-  if(!quitArm){quitArm=1;this.textContent='再按一次退出';
-    var self=this;setTimeout(function(){if(quitArm){quitArm=0;self.textContent='✕';}},2500);}
-  else{this.textContent='✕';endWorkout();}
+  var n=session.doneSets+(session.phase==='rest'?1:0);
+  $('#q-sub').textContent=n>0?('已完成 '+n+' 组，会记入训练记录'):'本次还没有完成的组，退出将不保存记录';
+  $('#qmodal').classList.add('show');
 };
+$('#q-cancel').onclick=function(){$('#qmodal').classList.remove('show');};
+$('#q-ok').onclick=function(){$('#qmodal').classList.remove('show');endWorkout();};
+$('#qmodal').addEventListener('click',function(ev){if(ev.target===this)$('#qmodal').classList.remove('show');});
 $('#btn-again').onclick=startWorkout;
 $('#btn-back').onclick=function(){show('config');};
 
