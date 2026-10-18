@@ -117,6 +117,10 @@ h1{font-size:22px;font-weight:800;background:var(--g-rain);background-clip:text;
 #rest-time.red{background:var(--g-red);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #rest-time[hidden]{display:none}
 #p-hint{text-align:center;color:var(--dim);font-size:13px;min-height:18px;margin-bottom:14px}
+#rest-adj{display:flex;justify-content:center;gap:12px;margin:-6px 0 12px}
+#rest-adj[hidden]{display:none}
+#rest-adj button{padding:7px 18px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;flex:none}
+#rest-adj button:active{transform:scale(.94)}
 #demo-box{position:absolute;inset:0;display:none;margin:0}
 #demo-box.on{display:flex;align-items:center;justify-content:center}
 #demo-box svg{width:72%;height:72%;display:block}
@@ -241,6 +245,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       "ring setline"
       "ring dots"
       "ring hint"
+      "ring adj"
       "ring done"
       "ring ctrl";
     column-gap:28px;align-content:center}
@@ -252,6 +257,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
   #p-setline{grid-area:setline;margin-bottom:6px;text-align:left}
   .dots{grid-area:dots;margin:6px 0 4px}
   #p-hint{grid-area:hint;text-align:left;margin-bottom:10px;min-height:0}
+  #rest-adj{grid-area:adj;justify-content:flex-start;margin:0 0 10px}
   #btn-done{grid-area:done;margin-bottom:8px}
   .p-controls{grid-area:ctrl;gap:8px}
   .btn-ctrl{padding:12px 8px}
@@ -332,6 +338,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <div class="ring-center"><div id="demo-box"></div><div id="rest-time" hidden></div><div id="big-time" hidden></div><div id="ring-sub" hidden></div></div>
     </div>
     <div id="p-hint"></div>
+    <div id="rest-adj" hidden><button id="rest-minus" aria-label="休息减15秒">−15s</button><button id="rest-plus" aria-label="休息加15秒">+15s</button></div>
     <button class="btn btn-manual" id="btn-done" hidden>✔ 完成本组</button>
     <div class="p-controls">
       <button class="btn btn-ctrl" id="btn-pause"><svg class="cicon" id="ic-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.2" width="3.6" height="11.6" rx="1.6"/><rect x="9.4" y="2.2" width="3.6" height="11.6" rx="1.6"/></svg><svg class="cicon" id="ic-resume" viewBox="0 0 16 16" hidden aria-hidden="true"><path d="M4.6 2.9v10.2c0 1 1.05 1.55 1.85 1.02l7.9-5.1c.75-.48.75-1.55 0-2.03l-7.9-5.1C5.65 1.35 4.6 1.9 4.6 2.9z"/></svg><span id="lb-pause">暂停</span></button>
@@ -369,6 +376,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     </div>
     <div class="hs-stats">
       <div class="stat"><b id="hs-week">0</b><span>本周次数</span></div>
+      <div class="stat"><b id="hs-streak">0</b><span>连续打卡</span></div>
       <div class="stat"><b id="hs-total">0</b><span>累计次数</span></div>
       <div class="stat"><b id="hs-mins">0</b><span>累计分钟</span></div>
     </div>
@@ -813,7 +821,7 @@ function playEl(clip){
   return false;
 }
 function say(clip,text){
-  return true; /* 语音已全部取消 */
+  return false; /* 语音已取消；返回 false 让 sDing/sGo/sFanfare/sTick 蜂鸣兜底生效（受 🔊 开关与 WebAudio 音量控制） */
 }
 $('#btn-mix').onclick=toggleMix;
 function show(v){
@@ -963,6 +971,7 @@ function startExercise(){
   var e=exercises[session.exIdx];
   session.phase='exercise';session.lastBeep=-1;session.paused=false;session.voiceAt={};
   $('#rest-time').hidden=true;
+  $('#rest-adj').hidden=true;
   $('#p-exname').textContent=e.name;
   $('#p-setline').textContent='第 '+session.setIdx+' / '+e.sets+' 组';
   $('#btn-done').hidden=!(e.dur<=0);
@@ -1002,6 +1011,7 @@ function startRest(){
   $('#ring-sub').textContent='休息';
   $('#p-hint').textContent=nextLabel();
   $('#btn-done').hidden=true;
+  $('#rest-adj').hidden=false;
   renderRingColor();updatePauseBtn();
   if(!say('rest','Take a rest'))sDing();
   vibrate([120,80,120]);
@@ -1054,6 +1064,20 @@ function togglePause(){
   if(window.FITMUSIC)FITMUSIC.setPaused(session.paused);
   updatePauseBtn();
 }
+/* ---------- 休息时长微调（±15s） ---------- */
+function adjustRest(sec){
+  if(!session||session.phase!=='rest')return;
+  if(session.paused)session.remaining=Math.max(0,session.remaining+sec);
+  session.endAt=Date.now()+(session.paused?session.remaining:(session.endAt-Date.now())/1000+sec)*1000;
+  session.total=Math.max(1,session.total+sec);
+  session.voiceAt={}; /* 时长变了，最后 3 秒提示重新武装 */
+  var rem=Math.max(0,(session.endAt-Date.now())/1000),whole=Math.ceil(rem);
+  session.remaining=rem;
+  $('#rest-time').textContent=String(whole);
+  $('#big-time').textContent=clock(whole);
+  setRing(rem/session.total);
+  vibrate(30);
+}
 function stopTimer(){if(session&&session.timer){clearInterval(session.timer);session.timer=null;}releaseWake();}
 function finish(){
   var secs=Math.round((Date.now()-session.startTs)/1000);
@@ -1074,7 +1098,7 @@ function endWorkout(){
   }
   if(session&&session.doneSets>0)pushRecord(false);
   stopDemoMedia();
-  $('#rest-time').hidden=true;stopTimer();exselClose();session=null;endArm=0;
+  $('#rest-time').hidden=true;$('#rest-adj').hidden=true;stopTimer();exselClose();session=null;endArm=0;
   if(window.FITMUSIC)FITMUSIC.stopWorkout();
   var be=$('#btn-end');$('#lb-end').textContent='结束';be.classList.remove('danger-arm');
   show('config');
@@ -1143,6 +1167,8 @@ $('#btn-quit').onclick=function(){
 };
 $('#q-cancel').onclick=function(){$('#qmodal').classList.remove('show');};
 $('#q-ok').onclick=function(){$('#qmodal').classList.remove('show');endWorkout();};
+$('#rest-minus').onclick=function(){adjustRest(-15);};
+$('#rest-plus').onclick=function(){adjustRest(15);};
 $('#qmodal').addEventListener('click',function(ev){if(ev.target===this)$('#qmodal').classList.remove('show');});
 $('#btn-again').onclick=startWorkout;
 $('#btn-back').onclick=function(){show('config');};
@@ -1186,9 +1212,19 @@ function weekCount(){
   trainLog.forEach(function(r){if(r.t>=start)n++;});
   return n;
 }
+function streak(){
+  function key(d){return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();}
+  var days={},i;
+  for(i=0;i<trainLog.length;i++){var d=new Date(trainLog[i].t);days[key(d)]=1;}
+  var n=0,cur=new Date();
+  if(!days[key(cur)])cur.setDate(cur.getDate()-1); /* 今天还没练，从昨天起算 */
+  while(days[key(cur)]){n++;cur.setDate(cur.getDate()-1);}
+  return n;
+}
 function renderHistory(){
   var tot=0;trainLog.forEach(function(r){tot+=r.secs;});
   $('#hs-week').textContent=weekCount();
+  $('#hs-streak').textContent=streak();
   $('#hs-total').textContent=trainLog.length;
   $('#hs-mins').textContent=Math.round(tot/60);
   var data=[],max=1;
