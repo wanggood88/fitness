@@ -272,7 +272,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <button class="btn btn-ctrl" id="m-media-pick">🎬 选择视频/动图</button>
       <button class="btn btn-ctrl" id="m-media-clear" hidden>🗑 清除素材</button>
     </div>
-    <div id="m-media-info">未设置，将使用内置火柴人演示</div>
+    <div id="m-media-info">未设置，将使用内置演示</div>
     <div id="m-media-preview"></div>
     <span class="f-label">在线演示链接（可选，本地素材优先）</span>
     <input type="url" id="m-url" placeholder="https://…/demo.mp4 或 .gif" autocomplete="off" autocapitalize="off">
@@ -525,7 +525,7 @@ function clearPreview(){
 function resetMediaUI(name){
   pendingMedia=null;clearPreview();
   $('#m-media-file').value='';
-  setMediaInfo('未设置，将使用内置火柴人演示',false);
+  setMediaInfo('未设置，将使用内置演示',false);
   if(!name)return;
   mediaGet(name).then(function(b){
     if(pendingMedia||editingIdx<0)return;
@@ -549,7 +549,7 @@ $('#m-media-file').onchange=function(){
 $('#m-media-clear').onclick=function(){
   pendingMedia={t:'remove'};clearPreview();
   $('#m-media-file').value='';
-  setMediaInfo('已清除，保存后使用内置火柴人演示',false);
+  setMediaInfo('已清除，保存后使用内置演示',false);
 };
 $('#modal').addEventListener('click',function(e){if(e.target.id==='modal')closeModal();});
 document.querySelectorAll('.st-btn').forEach(function(b){
@@ -726,6 +726,15 @@ function demoMakeEl(isVideo,src,objUrl){
   };
   var b=$('#demo-box');b.innerHTML='';b.classList.add('on');b.appendChild(el);
 }
+/* 内置公开演示素材（Wikimedia Commons：CC BY-SA 4.0 Wensceslao/Danielflefil、CC BY-SA 3.0 Mohamed Ouda、CDC 公有领域） */
+var BUILTIN_MEDIA={
+  '深蹲':'media/squat.mp4',
+  '俯卧撑':'media/pushup.gif',
+  '卷腹':'media/crunch.gif',
+  '开合跳':'media/jumpingjacks.gif',
+  '弓步蹲':'media/lunge.gif',
+  '高抬腿':'media/highknees.gif'
+};
 function playDemo(e){
   stopDemoMedia();
   if(window.FIT_DEMO){try{FIT_DEMO.stop();}catch(err){}}
@@ -733,11 +742,13 @@ function playDemo(e){
   mediaGet(e.name).then(function(blob){
     if(!guard())return;
     if(blob){var u=URL.createObjectURL(blob);demoMakeEl((blob.type||'').indexOf('video')===0,u,u);return;}
-    if(e.url){demoMakeEl(isVideoUrl(e.url),e.url,null);return;}
+    var mu=e.url||BUILTIN_MEDIA[e.name];
+    if(mu){demoMakeEl(isVideoUrl(mu),mu,null);return;}
     demoFallback(e);
   }).catch(function(){
     if(!guard())return;
-    if(e.url){demoMakeEl(isVideoUrl(e.url),e.url,null);return;}
+    var mu=e.url||BUILTIN_MEDIA[e.name];
+    if(mu){demoMakeEl(isVideoUrl(mu),mu,null);return;}
     demoFallback(e);
   });
 }
