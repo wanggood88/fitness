@@ -102,7 +102,11 @@ input[type=url]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid
 input[type=url]:focus{border-color:var(--lime)}
 .btn-manual{background:linear-gradient(135deg,#a3e635,#22d3a5);color:#0a0f05;margin-bottom:12px}
 .p-controls{display:flex;gap:10px}
-.btn-ctrl{flex:1;padding:14px;background:var(--card);border:1px solid var(--line);color:var(--text);font-weight:600}
+.btn-ctrl{flex:1;padding:14px;background:var(--card);border:1px solid var(--line);color:var(--text);font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px}
+.cicon{width:15px;height:15px;fill:currentColor;flex:none}
+.cicon[hidden]{display:none}
+.btn-ctrl span{white-space:nowrap}
+.btn-ctrl.danger-arm span{font-size:13px}
 .btn-ctrl.danger-arm{background:rgba(248,113,113,.15);border-color:var(--red);color:var(--red)}
 #view-done{display:none;text-align:center;padding-top:34px}
 #view-done.active{display:block}
@@ -200,9 +204,9 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div id="p-hint"></div>
     <button class="btn btn-manual" id="btn-done" hidden>✔ 完成本组</button>
     <div class="p-controls">
-      <button class="btn btn-ctrl" id="btn-pause">⏸ 暂停</button>
-      <button class="btn btn-ctrl" id="btn-skip">⏭ 跳过</button>
-      <button class="btn btn-ctrl" id="btn-end">■ 结束</button>
+      <button class="btn btn-ctrl" id="btn-pause"><svg class="cicon" id="ic-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.2" width="3.6" height="11.6" rx="1.6"/><rect x="9.4" y="2.2" width="3.6" height="11.6" rx="1.6"/></svg><svg class="cicon" id="ic-resume" viewBox="0 0 16 16" hidden aria-hidden="true"><path d="M4.6 2.9v10.2c0 1 1.05 1.55 1.85 1.02l7.9-5.1c.75-.48.75-1.55 0-2.03l-7.9-5.1C5.65 1.35 4.6 1.9 4.6 2.9z"/></svg><span id="lb-pause">暂停</span></button>
+      <button class="btn btn-ctrl" id="btn-skip"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.6 4.1v7.8c0 1 1.1 1.55 1.9 1.02l5.9-3.9c.75-.5.75-1.55 0-2.05L4.5 3.08c-.8-.53-1.9.02-1.9 1.02z"/><rect x="11.5" y="2.8" width="2.7" height="10.4" rx="1.35"/></svg><span>跳过</span></button>
+      <button class="btn btn-ctrl" id="btn-end"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.6" y="2.6" width="10.8" height="10.8" rx="2.6"/></svg><span id="lb-end">结束</span></button>
     </div>
   </section>
 
@@ -667,8 +671,11 @@ function updatePauseBtn(){
   var b=$('#btn-pause');
   var can=!!session&&session.total>0;
   b.disabled=!can;
-  b.textContent=session&&session.paused?'▶ 继续':'⏸ 暂停';
-  $('#big-time').classList.toggle('paused',!!(session&&session.paused));
+  var paused=!!(session&&session.paused);
+  $('#lb-pause').textContent=paused?'继续':'暂停';
+  $('#ic-pause').hidden=paused;
+  $('#ic-resume').hidden=!paused;
+  $('#big-time').classList.toggle('paused',paused);
 }
 function nextLabel(){
   var e=exercises[session.exIdx];
@@ -870,7 +877,7 @@ function endWorkout(){
   if(session&&session.doneSets>0)pushRecord(false);
   stopDemoMedia();
   $('#rest-time').hidden=true;stopTimer();session=null;quitArm=0;endArm=0;
-  var be=$('#btn-end');be.textContent='■ 结束';be.classList.remove('danger-arm');
+  var be=$('#btn-end');$('#lb-end').textContent='结束';be.classList.remove('danger-arm');
   $('#btn-quit').textContent='✕';
   show('config');
 }
@@ -892,8 +899,8 @@ $('#btn-skip').onclick=function(){
 $('#btn-pause').onclick=togglePause;
 $('#btn-end').onclick=function(){
   if(!session)return;
-  if(!endArm){endArm=1;this.textContent='确认结束？';this.classList.add('danger-arm');
-    var self=this;setTimeout(function(){if(endArm){endArm=0;self.textContent='■ 结束';self.classList.remove('danger-arm');}},2500);}
+  if(!endArm){endArm=1;$('#lb-end').textContent='确认结束';this.classList.add('danger-arm');
+    var self=this;setTimeout(function(){if(endArm){endArm=0;$('#lb-end').textContent='结束';self.classList.remove('danger-arm');}},2500);}
   else endWorkout();
 };
 $('#btn-quit').onclick=function(){
