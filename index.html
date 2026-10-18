@@ -19,6 +19,14 @@
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="splash/splash_1290x2796.png">
 <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3)" href="splash/splash_1206x2622.png">
 <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3)" href="splash/splash_1320x2868.png">
+<link rel="apple-touch-startup-image" media="(device-width: 667px) and (device-height: 375px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="splash/splash_1334x750.png">
+<link rel="apple-touch-startup-image" media="(device-width: 812px) and (device-height: 375px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="splash/splash_2436x1125.png">
+<link rel="apple-touch-startup-image" media="(device-width: 844px) and (device-height: 390px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="splash/splash_2532x1170.png">
+<link rel="apple-touch-startup-image" media="(device-width: 852px) and (device-height: 393px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="splash/splash_2556x1179.png">
+<link rel="apple-touch-startup-image" media="(device-width: 926px) and (device-height: 428px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="splash/splash_2778x1284.png">
+<link rel="apple-touch-startup-image" media="(device-width: 932px) and (device-height: 430px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="splash/splash_2796x1290.png">
+<link rel="apple-touch-startup-image" media="(device-width: 874px) and (device-height: 402px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="splash/splash_2622x1206.png">
+<link rel="apple-touch-startup-image" media="(device-width: 956px) and (device-height: 440px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="splash/splash_2868x1320.png">
 <style>
 :root{
   --bg:#0d1117; --card:#161b22; --card2:#1c2330; --line:#2a3140;
@@ -174,6 +182,39 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .btn-ctrl span{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .btn-ctrl.danger-arm span{background:var(--g-red);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .btn-ghost span{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+/* ---- 横屏适配（手机横过来：左圆环 / 右信息与控制）---- */
+@media (orientation:landscape) and (max-height:500px){
+  #app{max-width:none;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 8px) max(16px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 10px) max(16px,env(safe-area-inset-left))}
+  #view-config.active,#view-done.active,#view-history.active{width:100%;max-width:520px;margin:0 auto}
+  #view-player.active{flex:1;display:grid;min-height:0;
+    grid-template-columns:minmax(240px,300px) minmax(0,1fr);
+    grid-template-areas:
+      "top  top"
+      "prog prog"
+      "ring pill"
+      "ring exname"
+      "ring setline"
+      "ring dots"
+      "ring hint"
+      "ring done"
+      "ring ctrl";
+    column-gap:28px;align-content:center}
+  .p-top{grid-area:top;margin-bottom:6px}
+  .p-progress{grid-area:prog;margin-bottom:8px}
+  .ring-wrap{grid-area:ring;width:min(300px,74vh);height:min(300px,74vh);margin:0;justify-self:center;align-self:center}
+  #p-pill{grid-area:pill;justify-self:start}
+  #p-exname{grid-area:exname;font-size:23px;margin:8px 0 2px}
+  #p-setline{grid-area:setline;margin-bottom:6px;text-align:left}
+  .dots{grid-area:dots;margin:6px 0 4px}
+  #p-hint{grid-area:hint;text-align:left;margin-bottom:10px;min-height:0}
+  #btn-done{grid-area:done;margin-bottom:8px}
+  .p-controls{grid-area:ctrl;gap:8px}
+  .btn-ctrl{padding:12px 8px}
+  #rest-time{font-size:min(96px,25vh)}
+  #modal,#bmodal{align-items:center}
+  .sheet{border-radius:20px;max-height:calc(100vh - 24px)}
+}
 </style>
 </head>
 <body>
