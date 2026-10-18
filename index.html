@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>💪 健身提醒</title>
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="健身提醒">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#0d1117; --card:#161b22; --card2:#1c2330; --line:#2a3140;
+  --text:#e6edf3; --dim:#8b96a5;
+  --lime:#a3e635; --sky:#38bdf8; --gold:#fbbf24; --red:#f87171;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,"PingFang SC",sans-serif;min-height:100vh}
+#app{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px)}
+section{display:none}
+section.active{display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+h1{font-size:22px;font-weight:800}
+.subtitle{color:var(--dim);font-size:13px;margin-bottom:14px}
+.icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.icon-btn:active{transform:scale(.92)}
+.summary{color:var(--dim);font-size:13px;margin-bottom:12px}
+.summary b{color:var(--lime)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:7px 14px;border-radius:999px;border:1px dashed var(--line);background:transparent;color:var(--dim);font-size:13px;cursor:pointer;font-family:inherit}
+.chip:active{border-color:var(--lime);color:var(--lime)}
+.chip:disabled{opacity:.4}
+.ex-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.ex-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;align-items:center;gap:10px}
+.ex-idx{width:34px;height:34px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--lime);flex-shrink:0}
+.ex-info{flex:1;min-width:0}
+.ex-name{font-weight:700;font-size:16px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex-meta{font-size:12px;color:var(--dim)}
+.ex-meta b{color:var(--sky)}
+.ex-ops{display:flex;gap:6px;flex-shrink:0}
+.op-btn{width:30px;height:30px;border-radius:9px;border:none;background:var(--card2);color:var(--dim);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.op-btn:active{transform:scale(.92)}
+.op-btn:disabled{opacity:.25}
+.op-btn.del{color:var(--red)}
+.btn{width:100%;padding:15px;border-radius:14px;border:none;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn:active{transform:scale(.98);opacity:.9}
+.btn:disabled{opacity:.35}
+.btn-primary{background:linear-gradient(135deg,#a3e635,#22d3a5);color:#0a0f05}
+.btn-ghost{background:var(--card);border:1px solid var(--line);color:var(--text);margin-top:10px}
+.p-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.p-progress{height:6px;border-radius:3px;background:var(--card2);overflow:hidden;margin-bottom:20px}
+#p-progress-fill{height:100%;background:linear-gradient(90deg,var(--lime),var(--sky));width:0%;border-radius:3px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:999px;font-size:13px;font-weight:700}
+.pill.exercise{background:rgba(163,230,53,.12);color:var(--lime)}
+.pill.rest{background:rgba(56,189,248,.12);color:var(--sky)}
+#p-exname{font-size:26px;font-weight:800;margin:12px 0 6px}
+#p-setline{color:var(--dim);font-size:14px;margin-bottom:14px}
+.dots{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--card2);border:1px solid var(--line)}
+.dot.done{background:var(--lime);border-color:var(--lime)}
+.dot.cur{border-color:var(--lime);box-shadow:0 0 0 3px rgba(163,230,53,.2)}
+.ring-wrap{position:relative;width:240px;height:240px;margin:4px auto 8px}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--card2);stroke-width:13}
+#ring-fg{fill:none;stroke:var(--sky);stroke-width:13;stroke-linecap:round}
+#ring-fg.rest{stroke:var(--sky)}
+#ring-fg.exercise{stroke:var(--lime)}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+#big-time{font-size:48px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px}
+#big-time.paused{color:var(--gold)}
+#ring-sub{font-size:13px;color:var(--dim)}
+#p-hint{text-align:center;color:var(--dim);font-size:13px;min-height:18px;margin-bottom:14px}
+.btn-manual{background:linear-gradient(135deg,#a3e635,#22d3a5);color:#0a0f05;margin-bottom:12px}
+.p-controls{display:flex;gap:10px}
+.btn-ctrl{flex:1;padding:14px;background:var(--card);border:1px solid var(--line);color:var(--text);font-weight:600}
+.btn-ctrl.danger-arm{background:rgba(248,113,113,.15);border-color:var(--red);color:var(--red)}
+#view-done{display:none;text-align:center;padding-top:34px}
+#view-done.active{display:block}
+.done-emoji{font-size:64px;margin-bottom:10px}
+#done-title{font-size:24px;font-weight:800;margin-bottom:6px}
+#done-sub{color:var(--dim);font-size:14px;margin-bottom:24px}
+.done-stats{display:flex;gap:10px;margin-bottom:26px}
+.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stat b{display:block;font-size:20px;color:var(--lime);margin-bottom:2px}
+.stat span{font-size:12px;color:var(--dim)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
+#modal.show{display:flex}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 18px calc(env(safe-area-inset-bottom) + 18px)}
+.sheet h2{font-size:18px;margin-bottom:16px}
+.f-label{font-size:13px;color:var(--dim);margin:14px 0 6px;display:block}
+input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:16px;font-family:inherit;outline:none}
+input[type=text]:focus{border-color:var(--lime)}
+input[type=number]{width:64px;padding:8px 4px;border-radius:10px;border:1px solid var(--line);background:#232b3b;color:var(--text);font-size:17px;font-weight:700;text-align:center;font-family:inherit;outline:none;-moz-appearance:textfield}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]:focus{border-color:var(--lime)}
+.st-row{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px 8px 14px;margin-top:12px}
+.st-row .f-label{margin:0}
+.stepper-mid{display:flex;align-items:center;gap:8px}
+.st-btn{width:36px;height:36px;border-radius:10px;border:none;background:#232b3b;color:var(--text);font-size:20px;cursor:pointer;font-family:inherit}
+.st-btn:active{background:#2c3850}
+.st-unit{font-size:12px;color:var(--dim)}
+.f-err{color:var(--red);font-size:12px;min-height:16px;margin-top:8px}
+.sheet-btns{display:flex;gap:10px;margin-top:8px}
+.sheet-btns .btn{padding:13px}
+.top-actions{display:flex;gap:8px}
+.hs-stats{display:flex;gap:10px}
+h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
+.chart{display:flex;align-items:stretch;gap:8px;height:120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px 8px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
+.bar-val{font-size:10px;color:var(--dim);height:12px;line-height:12px}
+.bar{width:58%;max-width:26px;background:var(--card2);border-radius:6px 6px 2px 2px}
+.bar.on{background:linear-gradient(180deg,var(--lime),#22d3a5)}
+.bar-label{font-size:11px;color:var(--dim)}
+.hs-row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.hs-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.hs-date{font-weight:700;font-size:15px}
+.hs-badge{font-size:11px;padding:2px 8px;border-radius:999px;flex-shrink:0}
+.hs-badge.ok{background:rgba(163,230,53,.12);color:var(--lime)}
+.hs-badge.part{background:rgba(251,191,36,.12);color:var(--gold)}
+.hs-meta{color:var(--dim);font-size:13px}
+.hs-names{color:var(--dim);font-size:12px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs-empty{color:var(--dim);text-align:center;padding:26px 10px;font-size:14px}
+#bmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
+#bmodal.show{display:flex}
+#b-text{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:12px;font-family:ui-monospace,Menlo,monospace;outline:none;resize:none;line-height:1.5}
+#b-text:focus{border-color:var(--lime)}
+#saved-tip{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);background:#0f2b1a;color:var(--lime);border:1px solid rgba(163,230,53,.4);padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:60;display:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 配置页 -->
+  <section id="view-config" class="active">
+    <div class="topbar">
+      <h1>💪 健身提醒</h1>
+      <div class="top-actions">
+        <button class="icon-btn" id="btn-history">📊</button>
+        <button class="icon-btn" id="btn-sound1">🔊</button>
+      </div>
+    </div>
+    <div class="subtitle">练一组 → 自动休息倒计时 → 下一组</div>
+    <div class="summary" id="summary"></div>
+    <div class="chips" id="chips"></div>
+    <div class="ex-list" id="ex-list"></div>
+    <button class="btn btn-primary" id="btn-add">＋ 添加动作</button>
+    <button class="btn btn-ghost" id="btn-start" style="margin-top:10px">▶ 开始训练</button>
+    <button class="btn btn-ghost" id="btn-backup" style="margin-top:0">💾 备份 / 恢复配置</button>
+  </section>
+
+  <!-- 训练页 -->
+  <section id="view-player">
+    <div class="p-top">
+      <button class="icon-btn" id="btn-quit">✕</button>
+      <button class="icon-btn" id="btn-sound2">🔊</button>
+    </div>
+    <div class="p-progress"><div id="p-progress-fill"></div></div>
+    <span class="pill exercise" id="p-pill">动作中</span>
+    <div id="p-exname"></div>
+    <div id="p-setline"></div>
+    <div class="dots" id="p-dots"></div>
+    <div class="ring-wrap">
+      <svg width="240" height="240" viewBox="0 0 240 240">
+        <circle class="ring-bg" cx="120" cy="120" r="106"></circle>
+        <circle id="ring-fg" class="exercise" cx="120" cy="120" r="106"></circle>
+      </svg>
+      <div class="ring-center">
+        <div id="big-time">00:00</div>
+        <div id="ring-sub"></div>
+      </div>
+    </div>
+    <div id="p-hint"></div>
+    <button class="btn btn-manual" id="btn-done" hidden>✔ 完成本组</button>
+    <div class="p-controls">
+      <button class="btn btn-ctrl" id="btn-pause">⏸ 暂停</button>
+      <button class="btn btn-ctrl" id="btn-skip">⏭ 跳过</button>
+      <button class="btn btn-ctrl" id="btn-end">■ 结束</button>
+    </div>
+  </section>
+
+  <!-- 完成页 -->
+  <section id="view-done">
+    <div class="done-emoji">🎉</div>
+    <div id="done-title">训练完成！</div>
+    <div id="done-sub">干得漂亮，已自动记入训练记录</div>
+    <div class="done-stats">
+      <div class="stat"><b id="d-sets">0</b><span>完成组数</span></div>
+      <div class="stat"><b id="d-time">0</b><span>总用时</span></div>
+    </div>
+    <button class="btn btn-primary" id="btn-again">🔁 再来一次</button>
+    <button class="btn btn-ghost" id="btn-back" style="margin-top:10px">返回编辑</button>
+    <button class="btn btn-ghost" id="btn-seehis" style="margin-top:0">📊 查看训练记录</button>
+  </section>
+
+  <!-- 记录页 -->
+  <section id="view-history">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-h-back">←</button>
+      <h1 style="flex:1;font-size:19px;margin-left:6px">📊 训练记录</h1>
+    </div>
+    <div class="hs-stats">
+      <div class="stat"><b id="hs-week">0</b><span>本周次数</span></div>
+      <div class="stat"><b id="hs-total">0</b><span>累计次数</span></div>
+      <div class="stat"><b id="hs-mins">0</b><span>累计分钟</span></div>
+    </div>
+    <h2 class="sec">最近 7 天（分钟）</h2>
+    <div class="chart" id="hs-chart"></div>
+    <h2 class="sec">历史明细</h2>
+    <div id="hs-list"></div>
+    <button class="btn btn-ghost" id="btn-h-clear" style="margin-top:16px">清空记录</button>
+  </section>
+</div>
+
+<!-- 添加/编辑动作 弹层 -->
+<div id="modal">
+  <div class="sheet">
+    <h2 id="m-title">添加动作</h2>
+    <span class="f-label">动作名称</span>
+    <input type="text" id="m-name" placeholder="如：深蹲" maxlength="12">
+    <div class="st-row">
+      <span class="f-label">组数</span>
+      <div class="stepper-mid">
+        <button class="st-btn" data-t="sets" data-d="-1">−</button>
+        <input type="number" id="m-sets" min="1" max="30" value="3">
+        <span class="st-unit">组</span>
+        <button class="st-btn" data-t="sets" data-d="1">＋</button>
+      </div>
+    </div>
+    <div class="st-row">
+      <span class="f-label">每组时长</span>
+      <div class="stepper-mid">
+        <button class="st-btn" data-t="dur" data-d="-1">−</button>
+        <input type="number" id="m-dur" min="0" max="600" step="5" value="0">
+        <span class="st-unit">秒（0＝手动）</span>
+        <button class="st-btn" data-t="dur" data-d="1">＋</button>
+      </div>
+    </div>
+    <div class="st-row">
+      <span class="f-label">组间休息</span>
+      <div class="stepper-mid">
+        <button class="st-btn" data-t="rest" data-d="-1">−</button>
+        <input type="number" id="m-rest" min="0" max="600" step="5" value="60">
+        <span class="st-unit">秒</span>
+        <button class="st-btn" data-t="rest" data-d="1">＋</button>
+      </div>
+    </div>
+    <div class="f-err" id="m-err"></div>
+    <div class="sheet-btns">
+      <button class="btn btn-ctrl" id="m-cancel">取消</button>
+      <button class="btn btn-primary" id="m-save" style="flex:2">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 备份/恢复 弹层 -->
+<div id="bmodal">
+  <div class="sheet">
+    <h2>💾 备份 / 恢复配置</h2>
+    <span class="f-label">点「复制」把配置发给小助手，可永久固化进应用；把新的配置 JSON 粘贴进来后点「导入」即可恢复。</span>
+    <textarea id="b-text" rows="7" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+    <div class="f-err" id="b-err"></div>
+    <div class="sheet-btns">
+      <button class="btn btn-ctrl" id="b-cancel">关闭</button>
+      <button class="btn btn-ctrl" id="b-copy">📋 复制</button>
+      <button class="btn btn-primary" id="b-import" style="flex:1.4">📥 导入</button>
+    </div>
+    <span class="f-label" id="b-diag" style="margin-top:12px"></span>
+  </div>
+</div>
+<div id="saved-tip">已保存 ✓</div>
+
+<script>
+window.addEventListener('error',function(e){
+  var b=document.getElementById('errbox');
+  if(!b){b=document.createElement('div');b.id='errbox';
+    b.style.cssText='background:#7f1d1d;color:#fecaca;padding:8px 12px;border-radius:10px;font-size:12px;margin-bottom:10px;white-space:pre-wrap';
+    document.getElementById('app').prepend(b);}
+  b.textContent+='⚠ '+(e.message||e.type)+'\n';
+});
+</script>
+<script>
+'use strict';
+var $=function(s){return document.querySelector(s)};
+
+/* ---------- 数据 ---------- */
+var PRESETS=[
+  {name:'深蹲',sets:4,dur:0,rest:60},
+  {name:'俯卧撑',sets:3,dur:0,rest:90},
+  {name:'平板支撑',sets:3,dur:45,rest:60},
+  {name:'卷腹',sets:3,dur:0,rest:45},
+  {name:'开合跳',sets:3,dur:30,rest:30},
+  {name:'弓步蹲',sets:3,dur:0,rest:60},
+  {name:'靠墙静蹲',sets:3,dur:40,rest:60},
+  {name:'高抬腿',sets:3,dur:30,rest:30}
+];
+var exercises=[], session=null, editingIdx=-1, endArm=0, quitArm=0, wakeLock=null;
+var soundOn=localStorage.getItem('fit_sound')!=='0';
+
+/* 内置默认动作（固化在应用文件里，存储丢失时的兜底） */
+var DEFAULTS=[
+  {name:'深蹲',sets:4,dur:0,rest:60},
+  {name:'俯卧撑',sets:3,dur:0,rest:90},
+  {name:'平板支撑',sets:3,dur:45,rest:60}
+];
+var SKEY='fit_exercises_v2', cfgRev=0;
+function save(flash){
+  cfgRev++;
+  try{localStorage.setItem(SKEY,JSON.stringify({rev:cfgRev,items:exercises}));}catch(e){}
+  try{localStorage.setItem('fit_exercises',JSON.stringify(exercises));}catch(e){}
+  if(flash!==false)savedFlash();
+}
+function loadCfg(){
+  try{
+    var v=JSON.parse(localStorage.getItem(SKEY));
+    if(v&&Array.isArray(v.items)&&v.items.length){cfgRev=v.rev||1;return v.items;}
+  }catch(e){}
+  try{
+    var old=JSON.parse(localStorage.getItem('fit_exercises'));
+    if(Array.isArray(old)&&old.length){cfgRev=1;return old;}
+  }catch(e){}
+  return null;
+}
+var tipTimer=null;
+function savedFlash(){
+  var t=document.getElementById('saved-tip');
+  t.style.display='block';
+  clearTimeout(tipTimer);
+  tipTimer=setTimeout(function(){t.style.display='none';},1400);
+}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function clampInt(v,min,max,d){v=parseInt(v,10);if(isNaN(v))v=d;return Math.max(min,Math.min(max,v));}
+function clock(sec){sec=Math.max(0,Math.ceil(sec));var m=Math.floor(sec/60),s=sec%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
+function fmt(sec){sec=Math.round(sec);if(sec>=60){var m=Math.floor(sec/60),s=sec%60;return s?m+'分'+s+'秒':m+'分钟';}return sec+'秒';}
+
+/* ---------- 声音 ---------- */
+var AC=null;
+function ac(){if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C();}if(AC&&AC.state==='suspended')AC.resume();return AC;}
+function tone(freq,dur,delay,type,vol){
+  if(!soundOn)return;
+  try{var ctx=ac();if(!ctx)return;delay=delay||0;
+    var t=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type||'sine';o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.25,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+  }catch(e){}
+}
+function sTick(){tone(850,0.1);}
+function sGo(){tone(1046,0.12);tone(1046,0.18,0.15);}
+function sDing(){tone(880,0.15);tone(1318,0.25,0.12);}
+function sFanfare(){tone(660,0.15);tone(880,0.15,0.15);tone(1100,0.3,0.3);}
+function vibrate(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+</script>
+<script>
+'use strict';
+/* ---------- 配置页渲染 ---------- */
+function estimate(){
+  var sets=0,secs=0;
+  exercises.forEach(function(e){sets+=e.sets;secs+=e.sets*((e.dur||0)+(e.rest||0));});
+  if(exercises.length){var last=exercises[exercises.length-1];secs-=(last.rest||0);}
+  return {sets:sets,secs:secs};
+}
+function renderChips(){
+  var box=$('#chips');box.innerHTML='';
+  PRESETS.forEach(function(p){
+    var added=exercises.some(function(e){return e.name===p.name;});
+    var b=document.createElement('button');b.className='chip';
+    b.textContent=added?p.name+' ✓':'＋ '+p.name;
+    if(added)b.disabled=true;
+    b.onclick=function(){exercises.push({name:p.name,sets:p.sets,dur:p.dur,rest:p.rest});save();renderConfig();};
+    box.appendChild(b);
+  });
+}
+function renderConfig(){
+  var list=$('#ex-list');list.innerHTML='';
+  exercises.forEach(function(e,i){
+    var meta=e.sets+' 组 · '+(e.dur?('每组 '+fmt(e.dur)+' · '):'')+'休息 <b>'+fmt(e.rest)+'</b>';
+    var card=document.createElement('div');card.className='ex-card';
+    card.innerHTML=
+      '<div class="ex-idx">'+(i+1)+'</div>'+
+      '<div class="ex-info"><div class="ex-name">'+esc(e.name)+'</div><div class="ex-meta">'+meta+'</div></div>'+
+      '<div class="ex-ops">'+
+        '<button class="op-btn" data-a="up" data-i="'+i+'"'+(i===0?' disabled':'')+'>↑</button>'+
+        '<button class="op-btn" data-a="down" data-i="'+i+'"'+(i===exercises.length-1?' disabled':'')+'>↓</button>'+
+        '<button class="op-btn" data-a="edit" data-i="'+i+'">✏️</button>'+
+        '<button class="op-btn del" data-a="del" data-i="'+i+'">🗑</button>'+
+      '</div>';
+    list.appendChild(card);
+  });
+  var est=estimate();
+  $('#summary').innerHTML=sets0(est)?'还没有动作，点下面添加，或点上方常用动作一键加入':
+    '共 <b>'+est.sets+'</b> 组 · 预计约 <b>'+Math.ceil(est.secs/60)+'</b> 分钟';
+  $('#btn-start').disabled=!exercises.length;
+  renderChips();
+}
+function sets0(est){return !est.sets;}
+$('#ex-list').addEventListener('click',function(ev){
+  var b=ev.target.closest('.op-btn');if(!b||b.disabled)return;
+  var i=+b.dataset.i,a=b.dataset.a;
+  if(a==='up'&&i>0){var t=exercises[i-1];exercises[i-1]=exercises[i];exercises[i]=t;}
+  else if(a==='down'&&i<exercises.length-1){var t2=exercises[i+1];exercises[i+1]=exercises[i];exercises[i]=t2;}
+  else if(a==='edit'){openModal(i);return;}
+  else if(a==='del'){exercises.splice(i,1);}
+  else return;
+  save();renderConfig();
+});
+
+/* ---------- 添加 / 编辑弹层 ---------- */
+function openModal(idx){
+  editingIdx=idx;
+  var e=idx>=0?exercises[idx]:{name:'',sets:3,dur:0,rest:60};
+  $('#m-title').textContent=idx>=0?'编辑动作':'添加动作';
+  $('#m-name').value=e.name;$('#m-sets').value=e.sets;
+  $('#m-dur').value=e.dur||0;$('#m-rest').value=e.rest;
+  $('#m-err').textContent='';
+  $('#modal').classList.add('show');
+  setTimeout(function(){$('#m-name').focus();},100);
+}
+function closeModal(){$('#modal').classList.remove('show');editingIdx=-1;}
+function saveModal(){
+  var name=$('#m-name').value.trim();
+  if(!name){$('#m-err').textContent='请先填写动作名称';return;}
+  var obj={
+    name:name,
+    sets:clampInt($('#m-sets').value,1,30,3),
+    dur:clampInt($('#m-dur').value,0,600,0),
+    rest:clampInt($('#m-rest').value,0,600,60)
+  };
+  if(editingIdx>=0)exercises[editingIdx]=obj;else exercises.push(obj);
+  save();renderConfig();closeModal();
+}
+$('#btn-add').onclick=function(){openModal(-1);};
+$('#m-cancel').onclick=closeModal;
+$('#m-save').onclick=saveModal;
+$('#modal').addEventListener('click',function(e){if(e.target.id==='modal')closeModal();});
+document.querySelectorAll('.st-btn').forEach(function(b){
+  b.onclick=function(){
+    var inp=$('#m-'+b.dataset.t);
+    var step=b.dataset.t==='sets'?1:5;
+    var v=(parseInt(inp.value,10)||0)+(+b.dataset.d)*step;
+    var min=b.dataset.t==='sets'?1:0,max=b.dataset.t==='sets'?30:600;
+    inp.value=Math.max(min,Math.min(max,v));
+  };
+});
+
+/* ---------- 声音开关 ---------- */
+function syncSound(){var icon=soundOn?'🔊':'🔇';$('#btn-sound1').textContent=icon;$('#btn-sound2').textContent=icon;}
+function toggleSound(){soundOn=!soundOn;localStorage.setItem('fit_sound',soundOn?'1':'0');syncSound();if(soundOn)sTick();}
+$('#btn-sound1').onclick=toggleSound;
+$('#btn-sound2').onclick=toggleSound;
+</script>
+<script>
+'use strict';
+/* ---------- 训练页 ---------- */
+var CIRC=2*Math.PI*106;
+function show(v){
+  ['config','player','done','history'].forEach(function(x){$('#view-'+x).classList.toggle('active',x===v);});
+}
+function setRing(frac){
+  var f=Math.max(0,Math.min(1,frac));
+  var fg=$('#ring-fg');
+  fg.style.strokeDasharray=CIRC;
+  fg.style.strokeDashoffset=CIRC*(1-f);
+}
+function setPill(cls,text){var p=$('#p-pill');p.className='pill '+cls;p.textContent=text;}
+function renderDots(){
+  var e=exercises[session.exIdx],box=$('#p-dots');box.innerHTML='';
+  for(var i=1;i<=e.sets;i++){
+    var d=document.createElement('div');
+    d.className='dot'+(i<session.setIdx?' done':i===session.setIdx?' cur':'');
+    box.appendChild(d);
+  }
+}
+function updateProgress(){
+  var total=estimate().sets;
+  $('#p-progress-fill').style.width=(total?(session.doneSets/total*100):0)+'%';
+}
+function updatePauseBtn(){
+  var b=$('#btn-pause');
+  var can=!!session&&session.total>0;
+  b.disabled=!can;
+  b.textContent=session&&session.paused?'▶ 继续':'⏸ 暂停';
+  $('#big-time').classList.toggle('paused',!!(session&&session.paused));
+}
+function nextLabel(){
+  var e=exercises[session.exIdx];
+  if(session.setIdx<e.sets)return '接下来：'+e.name+' 第 '+(session.setIdx+1)+' 组';
+  if(session.exIdx<exercises.length-1)return '接下来：'+exercises[session.exIdx+1].name+' 第 1 组';
+  return '最后一组，坚持！';
+}
+function startWorkout(){
+  if(!exercises.length)return;
+  ac();
+  session={exIdx:0,setIdx:1,phase:'exercise',remaining:0,total:0,endAt:0,
+    paused:false,startTs:Date.now(),doneSets:0,lastBeep:-1,timer:null};
+  show('player');
+  requestWake();
+  startExercise();
+  session.timer=setInterval(tick,200);
+}
+function startExercise(){
+  var e=exercises[session.exIdx];
+  session.phase='exercise';session.lastBeep=-1;session.paused=false;
+  $('#p-exname').textContent=e.name;
+  $('#p-setline').textContent='第 '+session.setIdx+' / '+e.sets+' 组';
+  $('#btn-done').hidden=!(e.dur<=0);
+  setPill('exercise','动作中');
+  renderRingColor();renderDots();updateProgress();updatePauseBtn();
+  if(e.dur>0){
+    session.total=e.dur;session.remaining=e.dur;
+    session.endAt=Date.now()+e.dur*1000;
+    $('#big-time').textContent=clock(e.dur);setRing(1);
+    $('#ring-sub').textContent='坚持住';
+    $('#p-hint').textContent='跟着倒计时完成动作';
+    $('#big-time').classList.remove('paused');
+    sGo();vibrate(80);
+  }else{
+    session.total=0;session.remaining=0;
+    $('#big-time').textContent='💪';$('#big-time').classList.remove('paused');
+    $('#ring-sub').textContent='自定节奏';
+    $('#p-hint').textContent='按自己的节奏完成动作，好了点下方按钮';
+    setRing(1);
+  }
+}
+function startRest(){
+  var e=exercises[session.exIdx],rest=e.rest||0;
+  if(rest<=0){advance();return;}
+  session.phase='rest';session.lastBeep=-1;session.paused=false;
+  session.total=rest;session.remaining=rest;
+  session.endAt=Date.now()+rest*1000;
+  $('#big-time').textContent=clock(rest);setRing(1);
+  setPill('rest','休息一下');
+  $('#ring-sub').textContent='休息';
+  $('#p-hint').textContent=nextLabel();
+  $('#btn-done').hidden=true;
+  $('#big-time').classList.remove('paused');
+  renderRingColor();updatePauseBtn();
+  sDing();vibrate([120,80,120]);
+}
+function advance(){
+  session.doneSets++;
+  var e=exercises[session.exIdx];
+  if(session.setIdx<e.sets){session.setIdx++;startExercise();}
+  else if(session.exIdx<exercises.length-1){session.exIdx++;session.setIdx=1;startExercise();}
+  else finish();
+}
+function tick(){
+  if(!session||session.paused||session.total<=0)return;
+  session.remaining=Math.max(0,(session.endAt-Date.now())/1000);
+  var whole=Math.ceil(session.remaining);
+  $('#big-time').textContent=clock(whole);
+  setRing(session.remaining/session.total);
+  if(session.phase==='rest'&&whole<=3&&whole>=1&&whole!==session.lastBeep){
+    session.lastBeep=whole;sTick();vibrate(60);
+  }
+  if(session.remaining<=0){
+    if(session.phase==='exercise')startRest();else advance();
+  }
+}
+function togglePause(){
+  if(!session||session.total<=0)return;
+  if(session.paused){session.endAt=Date.now()+session.remaining*1000;session.paused=false;}
+  else{session.remaining=Math.max(0,(session.endAt-Date.now())/1000);session.paused=true;}
+  updatePauseBtn();
+}
+function stopTimer(){if(session&&session.timer){clearInterval(session.timer);session.timer=null;}releaseWake();}
+function finish(){
+  var secs=Math.round((Date.now()-session.startTs)/1000);
+  var doneSets=session.doneSets;
+  pushRecord(true);
+  stopTimer();session=null;
+  $('#d-sets').textContent=doneSets;
+  $('#d-time').textContent=secs>=60?Math.floor(secs/60)+'分'+String(secs%60).padStart(2,'0')+'秒':secs+'秒';
+  show('done');sFanfare();vibrate([150,80,150,80,220]);
+}
+function endWorkout(){
+  if(session&&session.doneSets>0)pushRecord(false);
+  stopTimer();session=null;quitArm=0;endArm=0;
+  var be=$('#btn-end');be.textContent='■ 结束';be.classList.remove('danger-arm');
+  $('#btn-quit').textContent='✕';
+  show('config');
+}
+function renderRingColor(){
+  var fg=$('#ring-fg');
+  var c=session.phase==='rest'?'var(--sky)':'var(--lime)';
+  fg.classList.toggle('rest',session.phase==='rest');
+  fg.classList.toggle('exercise',session.phase==='exercise');
+  fg.style.stroke=c;
+}
+
+/* 训练页按钮 */
+$('#btn-start').onclick=startWorkout;
+$('#btn-done').onclick=function(){if(session&&session.phase==='exercise')startRest();};
+$('#btn-skip').onclick=function(){
+  if(!session)return;
+  if(session.phase==='exercise')startRest();else advance();
+};
+$('#btn-pause').onclick=togglePause;
+$('#btn-end').onclick=function(){
+  if(!session)return;
+  if(!endArm){endArm=1;this.textContent='确认结束？';this.classList.add('danger-arm');
+    var self=this;setTimeout(function(){if(endArm){endArm=0;self.textContent='■ 结束';self.classList.remove('danger-arm');}},2500);}
+  else endWorkout();
+};
+$('#btn-quit').onclick=function(){
+  if(!session)return;
+  if(!quitArm){quitArm=1;this.textContent='再按一次退出';
+    var self=this;setTimeout(function(){if(quitArm){quitArm=0;self.textContent='✕';}},2500);}
+  else{this.textContent='✕';endWorkout();}
+};
+$('#btn-again').onclick=startWorkout;
+$('#btn-back').onclick=function(){show('config');};
+
+/* 屏幕常亮 */
+function requestWake(){try{if(navigator.wakeLock&&'request' in navigator.wakeLock){navigator.wakeLock.request('screen').then(function(w){wakeLock=w;}).catch(function(){});}}catch(e){}}
+function releaseWake(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'&&session)requestWake();
+});
+
+/* ---------- 初始化 ---------- */
+(function init(){
+  var stored=loadCfg();
+  if(stored){exercises=stored;}
+  else{
+    exercises=DEFAULTS.slice();
+    try{localStorage.setItem(SKEY,JSON.stringify({rev:1,items:exercises}));}catch(e){}
+    try{localStorage.setItem('fit_exercises',JSON.stringify(exercises));}catch(e){}
+    cfgRev=1;
+  }
+  syncSound();renderConfig();
+})();
+</script>
+<script>
+'use strict';
+/* ---------- 训练记录 ---------- */
+var trainLog=[];
+try{var _tl=JSON.parse(localStorage.getItem('fit_history_v1'));if(Array.isArray(_tl))trainLog=_tl;}catch(e){}
+function saveHistory(){localStorage.setItem('fit_history_v1',JSON.stringify(trainLog.slice(-500)));}
+function pushRecord(done){
+  if(!session)return;
+  trainLog.push({t:Date.now(),sets:session.doneSets,total:estimate().sets,
+    secs:Math.round((Date.now()-session.startTs)/1000),done:!!done,
+    names:exercises.map(function(e){return e.name;})});
+  saveHistory();
+}
+function dayStart(off){var n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate()-off).getTime();}
+function weekCount(){
+  var now=new Date(),dow=(now.getDay()+6)%7,start=dayStart(dow),n=0;
+  trainLog.forEach(function(r){if(r.t>=start)n++;});
+  return n;
+}
+function renderHistory(){
+  var tot=0;trainLog.forEach(function(r){tot+=r.secs;});
+  $('#hs-week').textContent=weekCount();
+  $('#hs-total').textContent=trainLog.length;
+  $('#hs-mins').textContent=Math.round(tot/60);
+  var data=[],max=1;
+  for(var i=6;i>=0;i--){
+    var a=dayStart(i),b=dayStart(i-1),mins=0;
+    trainLog.forEach(function(r){if(r.t>=a&&r.t<b)mins+=r.secs;});
+    mins=Math.round(mins/60);
+    if(mins>max)max=mins;
+    var d=new Date(a);
+    data.push({mins:mins,label:i===0?'今':'周'+'一二三四五六日'[(d.getDay()+6)%7]});
+  }
+  var box=$('#hs-chart');box.innerHTML='';
+  data.forEach(function(d){
+    var col=document.createElement('div');col.className='bar-col';
+    var v=document.createElement('div');v.className='bar-val';v.textContent=d.mins||'';
+    var bar=document.createElement('div');bar.className='bar'+(d.mins?' on':'');
+    bar.style.height=(d.mins?Math.max(6,Math.round(d.mins/max*64)):3)+'px';
+    var lab=document.createElement('div');lab.className='bar-label';lab.textContent=d.label;
+    col.appendChild(v);col.appendChild(bar);col.appendChild(lab);
+    box.appendChild(col);
+  });
+  var list=$('#hs-list');list.innerHTML='';
+  if(!trainLog.length){list.innerHTML='<div class="hs-empty">还没有记录，完成一次训练后会自动记在这里</div>';}
+  trainLog.slice().reverse().forEach(function(r){
+    var d=new Date(r.t);
+    var txt=(d.getMonth()+1)+'月'+d.getDate()+'日 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    var row=document.createElement('div');row.className='hs-row';
+    row.innerHTML='<div class="hs-top"><span class="hs-date">'+txt+'</span>'+
+      '<span class="hs-badge '+(r.done?'ok">完成':'part">中途')+'</span></div>'+
+      '<div class="hs-meta">'+r.sets+' / '+r.total+' 组 · '+fmt(r.secs)+'</div>'+
+      (r.names&&r.names.length?'<div class="hs-names">'+esc(r.names.join('、'))+'</div>':'');
+    list.appendChild(row);
+  });
+}
+var clearArm=0;
+$('#btn-history').onclick=function(){renderHistory();show('history');};
+$('#btn-seehis').onclick=function(){renderHistory();show('history');};
+$('#btn-h-back').onclick=function(){show('config');};
+$('#btn-h-clear').onclick=function(){
+  if(!clearArm){clearArm=1;this.textContent='确认清空全部记录？';
+    var self=this;setTimeout(function(){if(clearArm){clearArm=0;self.textContent='清空记录';}},2500);}
+  else{clearArm=0;trainLog=[];saveHistory();renderHistory();this.textContent='清空记录';}
+};
+
+/* ---------- 备份 / 恢复 ---------- */
+function openBackup(){
+  $('#b-text').value=JSON.stringify({rev:cfgRev,items:exercises});
+  $('#b-err').textContent='';
+  var diag='存储诊断：';
+  try{
+    var k='fit_probe_'+Date.now();
+    localStorage.setItem(k,'1');
+    diag+=(localStorage.getItem(k)==='1')?'本机存储可写 ✓':'本机存储异常 ✗';
+    localStorage.removeItem(k);
+    diag+=' · 当前 '+exercises.length+' 个动作 · 版本 r'+cfgRev;
+  }catch(e){diag+='不可用（'+(e.message||e.name)+'），改动请及时「复制」备份';}
+  $('#b-diag').textContent=diag;
+  $('#bmodal').classList.add('show');
+}
+$('#btn-backup').onclick=openBackup;
+$('#b-cancel').onclick=function(){$('#bmodal').classList.remove('show');};
+$('#bmodal').addEventListener('click',function(e){if(e.target.id==='bmodal')$('#bmodal').classList.remove('show');});
+$('#b-copy').onclick=function(){
+  var ta=$('#b-text'),msg=$('#b-err');
+  ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+  var ok=false;
+  try{ok=document.execCommand('copy');}catch(e){}
+  if(ok){msg.textContent='已复制 ✓ 粘贴发到聊天里即可永久固化';return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(function(){
+      msg.textContent='已复制 ✓ 粘贴发到聊天里即可永久固化';
+    },function(){msg.textContent='复制失败，请手动长按全选复制';});
+  }else msg.textContent='请手动长按全选复制';
+};
+$('#b-import').onclick=function(){
+  var msg=$('#b-err');
+  try{
+    var v=JSON.parse($('#b-text').value);
+    var items=Array.isArray(v)?v:v.items;
+    if(!Array.isArray(items)||!items.length)throw new Error('empty');
+    items=items.map(function(e){
+      return {name:String(e.name||'动作').slice(0,12),
+        sets:clampInt(e.sets,1,30,3),dur:clampInt(e.dur,0,600,0),rest:clampInt(e.rest,0,600,60)};
+    });
+    exercises=items;save();renderConfig();
+    msg.textContent='导入成功 ✓ 共 '+items.length+' 个动作';
+    setTimeout(function(){$('#bmodal').classList.remove('show');},700);
+  }catch(e){msg.textContent='格式不对：请粘贴完整的配置 JSON（可从小助手的回复里复制）';}
+};
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
