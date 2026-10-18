@@ -26,7 +26,8 @@
   --lime:#a3e635; --sky:#38bdf8; --gold:#fbbf24; --red:#f87171;
   --g-ex:linear-gradient(135deg,#a3e635,#22d3a5); --g-rest:linear-gradient(135deg,#38bdf8,#818cf8);
   --g-gold:linear-gradient(180deg,#fde047,#f59e0b); --g-red:linear-gradient(180deg,#fca5a5,#ef4444);
-  --g-text:linear-gradient(180deg,#ffffff,#c9d4e8); --g-sheen:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
+  --g-text:linear-gradient(180deg,#ffffff,#c9d4e8);
+  --g-rain:linear-gradient(120deg,#a3e635,#2dd4bf,#38bdf8,#c084fc,#f472b6); --g-sheen:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,"PingFang SC",sans-serif;min-height:100vh}
@@ -34,12 +35,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,
 section{display:none}
 section.active{display:block}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-h1{font-size:22px;font-weight:800}
+h1{font-size:22px;font-weight:800;background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .subtitle{color:var(--dim);font-size:13px;margin-bottom:14px}
 .icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--g-sheen);color:var(--text);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .icon-btn:active{transform:scale(.92)}
 .summary{color:var(--dim);font-size:13px;margin-bottom:12px}
-.summary b{background:var(--g-ex);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.summary b{background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex-shrink:0;padding:7px 14px;border-radius:999px;border:1px dashed var(--line);background:transparent;color:var(--dim);font-size:13px;cursor:pointer;font-family:inherit}
@@ -68,7 +69,7 @@ h1{font-size:22px;font-weight:800}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:999px;font-size:13px;font-weight:700}
 .pill.exercise{background:linear-gradient(135deg,rgba(163,230,53,.18),rgba(34,211,165,.14));color:var(--lime)}
 .pill.rest{background:linear-gradient(135deg,rgba(56,189,248,.18),rgba(129,140,248,.14));color:var(--sky)}
-#p-exname{font-size:28px;font-weight:800;letter-spacing:-.3px;margin:12px 0 6px;background:var(--g-ex);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#p-exname{font-size:28px;font-weight:800;letter-spacing:-.3px;margin:12px 0 6px;background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #p-setline{color:var(--dim);font-size:14px;margin-bottom:14px}
 .dots{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--card2);border:1px solid var(--line)}
@@ -84,7 +85,7 @@ h1{font-size:22px;font-weight:800}
 #big-time{display:none;font-size:48px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px}
 #big-time.paused{color:var(--gold)}
 #ring-sub{display:none;font-size:13px;color:var(--dim)}
-#rest-time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:min(108px,26vw);font-weight:700;font-family:-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-2px;line-height:1;pointer-events:none;filter:drop-shadow(0 3px 16px rgba(0,0,0,.5));background:var(--g-text);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#rest-time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:min(108px,26vw);font-weight:700;font-family:-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-2px;line-height:1;pointer-events:none;filter:drop-shadow(0 3px 16px rgba(0,0,0,.5));background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #rest-time.gold{background:var(--g-gold);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #rest-time.red{background:var(--g-red);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #rest-time[hidden]{display:none}
@@ -116,11 +117,11 @@ input[type=url]:focus{border-color:var(--lime)}
 #view-done{display:none;text-align:center;padding-top:34px}
 #view-done.active{display:block}
 .done-emoji{font-size:64px;margin-bottom:10px}
-#done-title{font-size:24px;font-weight:800;margin-bottom:6px;background:var(--g-ex);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#done-title{font-size:24px;font-weight:800;margin-bottom:6px;background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 #done-sub{color:var(--dim);font-size:14px;margin-bottom:24px}
 .done-stats{display:flex;gap:10px;margin-bottom:26px}
 .stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
-.stat b{display:block;font-size:20px;background:var(--g-ex);margin-bottom:2px;background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.stat b{display:block;font-size:20px;background:var(--g-rain);margin-bottom:2px;background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .stat span{font-size:12px;color:var(--dim)}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
 #modal.show{display:flex}
