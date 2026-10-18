@@ -27,7 +27,8 @@
   --g-ex:linear-gradient(135deg,#a3e635,#22d3a5); --g-rest:linear-gradient(135deg,#38bdf8,#818cf8);
   --g-gold:linear-gradient(180deg,#fde047,#f59e0b); --g-red:linear-gradient(180deg,#fca5a5,#ef4444);
   --g-text:linear-gradient(180deg,#ffffff,#c9d4e8);
-  --g-rain:linear-gradient(120deg,#a3e635,#2dd4bf,#38bdf8,#c084fc,#f472b6); --g-sheen:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
+  --g-rain:linear-gradient(120deg,#a3e635,#2dd4bf,#38bdf8,#c084fc,#f472b6);
+  --g-text2:linear-gradient(180deg,#e8eef7,#939eae); --g-sheen:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,"PingFang SC",sans-serif;min-height:100vh}
@@ -166,6 +167,13 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 #b-text{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:12px;font-family:ui-monospace,Menlo,monospace;outline:none;resize:none;line-height:1.5}
 #b-text:focus{border-color:var(--lime)}
 #saved-tip{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);background:#0f2b1a;color:var(--lime);border:1px solid rgba(163,230,53,.4);padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:60;display:none}
+/* ---- 全文字渐变化 ---- */
+#p-setline,#p-hint,.subtitle,.summary,.ex-meta,.hs-meta,.hs-names,.hs-empty,.stat span,.f-label,.st-unit,.chip,#m-media-info,#done-sub{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.ex-meta b{background:var(--g-rest);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.ex-name,.sheet h2,.sec,.hs-date{background:var(--g-rain);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.btn-ctrl span{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.btn-ctrl.danger-arm span{background:var(--g-red);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.btn-ghost span{background:var(--g-text2);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 </style>
 </head>
 <body>
@@ -184,9 +192,9 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div class="chips" id="chips"></div>
     <div class="ex-list" id="ex-list"></div>
     <button class="btn btn-primary" id="btn-add">＋ 添加动作</button>
-    <button class="btn btn-ghost" id="btn-start" style="margin-top:10px">▶ 开始训练</button>
-    <button class="btn btn-ghost" id="btn-backup" style="margin-top:0">💾 备份 / 恢复配置</button>
-    <button class="btn btn-ghost" id="btn-mix" style="margin-top:0">🎵 音乐共存</button>
+    <button class="btn btn-ghost" id="btn-start" style="margin-top:10px"><span>▶ 开始训练</span></button>
+    <button class="btn btn-ghost" id="btn-backup" style="margin-top:0"><span>💾 备份 / 恢复配置</span></button>
+    <button class="btn btn-ghost" id="btn-mix" style="margin-top:0"><span>🎵 音乐共存</span></button>
   </section>
 
   <!-- 训练页 -->
@@ -231,8 +239,8 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <div class="stat"><b id="d-time">0</b><span>总用时</span></div>
     </div>
     <button class="btn btn-primary" id="btn-again">🔁 再来一次</button>
-    <button class="btn btn-ghost" id="btn-back" style="margin-top:10px">返回编辑</button>
-    <button class="btn btn-ghost" id="btn-seehis" style="margin-top:0">📊 查看训练记录</button>
+    <button class="btn btn-ghost" id="btn-back" style="margin-top:10px"><span>返回编辑</span></button>
+    <button class="btn btn-ghost" id="btn-seehis" style="margin-top:0"><span>📊 查看训练记录</span></button>
   </section>
 
   <!-- 记录页 -->
@@ -250,7 +258,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div class="chart" id="hs-chart"></div>
     <h2 class="sec">历史明细</h2>
     <div id="hs-list"></div>
-    <button class="btn btn-ghost" id="btn-h-clear" style="margin-top:16px">清空记录</button>
+    <button class="btn btn-ghost" id="btn-h-clear" style="margin-top:16px"><span>清空记录</span></button>
   </section>
 </div>
 
