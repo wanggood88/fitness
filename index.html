@@ -442,7 +442,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 <div id="bmodal">
   <div class="sheet">
     <h2>💾 备份 / 恢复配置</h2>
-    <span class="f-label">点「复制」把配置发给小助手，可永久固化进应用；把新的配置 JSON 粘贴进来后点「导入」即可恢复。本地选择的演示视频/动图只存本机、不随备份导出；在线链接会包含在备份中。</span>
+    <span class="f-label">点「复制」把配置发给小助手，可永久固化进应用；把新的配置 JSON 粘贴进来后点「导入」即可恢复。本地选择的演示视频/动图只存本机、不随备份导出；在线链接和训练记录（最近 500 条）会包含在备份中。</span>
     <textarea id="b-text" rows="7" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
     <div class="f-err" id="b-err"></div>
     <div class="sheet-btns">
@@ -1271,7 +1271,7 @@ $('#btn-h-clear').onclick=function(){
 
 /* ---------- 备份 / 恢复 ---------- */
 function openBackup(){
-  $('#b-text').value=JSON.stringify({rev:cfgRev,items:exercises});
+  $('#b-text').value=JSON.stringify({rev:cfgRev,items:exercises,hist:trainLog.slice(-500)});
   $('#b-err').textContent='';
   var diag='存储诊断：';
   try{
@@ -1310,7 +1310,24 @@ $('#b-import').onclick=function(){
         sets:clampInt(e.sets,1,30,3),dur:clampInt(e.dur,0,600,0),rest:clampInt(e.rest,0,600,60)};
     });
     exercises=items;save();renderConfig();
-    msg.textContent='导入成功 ✓ 共 '+items.length+' 个动作';
+    /* 训练记录合并导入（按时间戳去重，旧格式/无 hist 字段则跳过） */
+    var nImp=0;
+    if(v&&!Array.isArray(v)&&Array.isArray(v.hist)){
+      var seen={},out=[],i;
+      for(i=0;i<trainLog.length;i++){var t0=+trainLog[i].t;if(t0)seen[t0]=trainLog[i];}
+      v.hist.slice(-500).forEach(function(r){
+        var t=+(r&&r.t);if(!t||t<0||t>Date.now()+86400000)return;
+        if(seen[t])return;
+        seen[t]={t:t,sets:clampInt(r.sets,0,999,0),total:clampInt(r.total,0,9999,0),
+          secs:clampInt(r.secs,0,86400,0),done:!!r.done,
+          names:Array.isArray(r.names)?r.names.map(String).slice(0,12):[]};
+      });
+      for(var k in seen)out.push(seen[k]);
+      out.sort(function(a,b){return a.t-b.t;});
+      nImp=Math.max(0,out.length-trainLog.length);
+      trainLog=out.slice(-500);saveHistory();renderHistory();
+    }
+    msg.textContent='导入成功 ✓ 共 '+items.length+' 个动作'+(nImp?' · 新增 '+nImp+' 条训练记录':'');
     setTimeout(function(){$('#bmodal').classList.remove('show');},700);
   }catch(e){msg.textContent='格式不对：请粘贴完整的配置 JSON（可从小助手的回复里复制）';}
 };
