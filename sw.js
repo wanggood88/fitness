@@ -1,4 +1,4 @@
-var CACHE = 'fit-v14';
+var CACHE = 'fit-v15';
 var ASSETS = ['./', './index.html', './icon-180.png', './icon-512.png', './manifest.json', './demo.js',
   './voice/ten.m4a', './voice/three.m4a', './voice/two.m4a', './voice/one.m4a',
   './voice/go.m4a', './voice/rest.m4a', './voice/done.m4a',
