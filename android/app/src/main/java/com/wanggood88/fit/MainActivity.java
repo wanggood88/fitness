@@ -24,6 +24,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -113,7 +114,10 @@ public class MainActivity extends AppCompatActivity {
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
                 if (fileCb != null) fileCb.onReceiveValue(null);
                 fileCb = cb;
-                try { startActivityForResult(p.createIntent(), FILE_REQ); } catch (Exception e) {
+                try {
+                    startActivityForResult(p.createIntent(), FILE_REQ);
+                    Toast.makeText(MainActivity.this, "选择器已打开", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
                     fileCb = null;
                     cb.onReceiveValue(null);
                     return false;
@@ -236,7 +240,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int req, int res, @Nullable Intent data) {
         super.onActivityResult(req, res, data);
         if (req == FILE_REQ && fileCb != null) {
-            fileCb.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, data));
+            Uri[] uris = WebChromeClient.FileChooserParams.parseResult(res, data);
+            Toast.makeText(this, "已收到文件：" + (uris == null ? "无（取消）" : uris.length + " 个"), Toast.LENGTH_SHORT).show();
+            fileCb.onReceiveValue(uris);
             fileCb = null;
         }
     }
