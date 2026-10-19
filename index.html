@@ -908,6 +908,7 @@ function startWorkout(){
     paused:false,startTs:Date.now(),doneSets:0,doneMap:{},lastBeep:-1,timer:null};
   show('player');
   requestWake();
+  if(window.AndroidBridge&&AndroidBridge.keepAwake)AndroidBridge.keepAwake(true);
   unlockVoices();
   if(window.FITMUSIC)FITMUSIC.startWorkout();
   startExercise();
@@ -1117,7 +1118,7 @@ function adjustRest(sec){
   setRing(rem/session.total);
   vibrate(30);
 }
-function stopTimer(){if(session&&session.timer){clearInterval(session.timer);session.timer=null;}releaseWake();}
+function stopTimer(){if(session&&session.timer){clearInterval(session.timer);session.timer=null;}releaseWake();if(window.AndroidBridge&&AndroidBridge.keepAwake)AndroidBridge.keepAwake(false);}
 function finish(){
   var secs=Math.round((Date.now()-session.startTs)/1000);
   var doneSets=session.doneSets;
@@ -1389,13 +1390,14 @@ $('#b-import').onclick=function(){
 };
 </script>
 <script>
-if('serviceWorker' in navigator && location.protocol==='https:'){
+/* APK 内（AndroidBridge 注入）资源已本地打包，跳过 SW 注册 */
+if('serviceWorker' in navigator && location.protocol==='https:' && !window.AndroidBridge){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 </script>
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=15"></script>
+<script src="music.js?v=16"></script>
 </body>
 </html>
