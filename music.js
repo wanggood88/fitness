@@ -135,10 +135,10 @@
     if (msBound || !('mediaSession' in navigator)) return;
     msBound = true;
     var N = navigator.mediaSession;
-    try { N.setActionHandler('play', function () { api.togglePlay(); }); } catch (e) {}
-    try { N.setActionHandler('pause', function () { api.setPaused(true); }); } catch (e) {}
-    try { N.setActionHandler('previoustrack', function () { api.prev(); }); } catch (e) {}
-    try { N.setActionHandler('nexttrack', function () { api.next(); }); } catch (e) {}
+    try { N.setActionHandler('play', function () { togglePlay(); }); } catch (e) {}
+    try { N.setActionHandler('pause', function () { setPaused(true); }); } catch (e) {}
+    try { N.setActionHandler('previoustrack', function () { prev(); }); } catch (e) {}
+    try { N.setActionHandler('nexttrack', function () { next(); }); } catch (e) {}
   }
   function msState(s) { try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = s; } catch (e) {} }
 
