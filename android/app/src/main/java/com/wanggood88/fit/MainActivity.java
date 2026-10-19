@@ -74,7 +74,14 @@ public class MainActivity extends AppCompatActivity {
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
-                .addPathHandler("/app/", new WebViewAssetLoader.AssetsPathHandler(this))
+                /* PathHandler 收到的是剥掉 /app/ 前缀后的路径，需手动映射到 assets/app/ */
+                .addPathHandler("/app/", new WebViewAssetLoader.PathHandler() {
+                    @Nullable
+                    @Override
+                    public InputStream handle(@NonNull String path) {
+                        try { return getAssets().open("app/" + path); } catch (Exception e) { return null; }
+                    }
+                })
                 .build();
 
         web.setWebViewClient(new WebViewClient() {
