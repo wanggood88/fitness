@@ -1,5 +1,5 @@
-var CACHE = 'fit-v38';
-var ASSETS = ['./', './index.html', './icon-180.png', './icon-512.png', './manifest.json', './demo.js', './three.min.js', './demo3d.js', './music.js?v=17',
+var CACHE = 'fit-v39';
+var ASSETS = ['./', './index.html', './icon-180.png', './icon-512.png', './manifest.json', './demo.js', './three.min.js', './demo3d.js', './music.js?v=18',
   './voice/ten.m4a', './voice/three.m4a', './voice/two.m4a', './voice/one.m4a',
   './voice/go.m4a', './voice/rest.m4a', './voice/done.m4a',
   './splash/splash_750x1334.png', './splash/splash_1125x2436.png', './splash/splash_1170x2532.png', './splash/splash_1179x2556.png', './splash/splash_1284x2778.png', './splash/splash_1290x2796.png', './splash/splash_1206x2622.png', './splash/splash_1320x2868.png',
