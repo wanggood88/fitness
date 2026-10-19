@@ -67,8 +67,11 @@
     mu.addEventListener('ended', onEnded);
     mu.addEventListener('error', onError);
     mu.addEventListener('timeupdate', syncSeek);
-    mu.addEventListener('loadedmetadata', syncSeek);
-    mu.addEventListener('seeked', syncSeek);
+    mu.addEventListener('loadedmetadata', function () { syncSeek(); msPos(); });
+    mu.addEventListener('seeked', function () { syncSeek(); msPos(); });
+    mu.addEventListener('playing', function () { msPos(); });
+    mu.addEventListener('pause', function () { msPos(); });
+    mu.addEventListener('ratechange', function () { msPos(); });
     mu.addEventListener('playing', function () { errStreak = 0; playing = true; syncAll(); });
     mu.addEventListener('pause', function () { if (mu && !mu.ended) { playing = false; syncAll(); } });
     return mu;
@@ -143,8 +146,19 @@
     try { N.setActionHandler('pause', function () { setPaused(true); }); } catch (e) {}
     try { N.setActionHandler('previoustrack', function () { prev(); }); } catch (e) {}
     try { N.setActionHandler('nexttrack', function () { next(); }); } catch (e) {}
+    try { N.setActionHandler('seekto', function (d) { if (mu && d && isFinite(d.seekTime)) { var t = Math.max(0, d.seekTime); if (isFinite(mu.duration)) t = Math.min(t, mu.duration); try { mu.currentTime = t; } catch (e) {} } }); } catch (e) {}
+    try { N.setActionHandler('seekbackward', function (d) { if (mu) { try { mu.currentTime = Math.max(0, mu.currentTime - ((d && d.seekOffset) || 10)); } catch (e) {} } }); } catch (e) {}
+    try { N.setActionHandler('seekforward', function (d) { if (mu) { var t = mu.currentTime + ((d && d.seekOffset) || 10); if (isFinite(mu.duration)) t = Math.min(t, mu.duration); try { mu.currentTime = t; } catch (e) {} } }); } catch (e) {}
   }
   function msState(s) { try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = s; } catch (e) {} }
+  /* 通知栏/锁屏进度条：由系统按 playbackRate 插值推进，播/停/拖时重设基准 */
+  function msPos() {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    if (!mu) return;
+    var d = mu.duration;
+    if (!isFinite(d) || d <= 0) return;
+    try { navigator.mediaSession.setPositionState({ duration: d, position: Math.max(0, Math.min(mu.currentTime || 0, d)), playbackRate: mu.playbackRate || 1 }); } catch (e) {}
+  }
 
   /* ---------- 训练流程接入 ---------- */
   function startWorkout() {
@@ -161,6 +175,7 @@
     if (mu) { try { mu.pause(); } catch (e) {} }
     playing = false; msState('paused'); syncAll();
     try { if ('mediaSession' in navigator) navigator.mediaSession.metadata = null; } catch (e) {}
+    try { if ('mediaSession' in navigator && navigator.mediaSession.setPositionState) navigator.mediaSession.setPositionState(); } catch (e) {}
   }
   function setPaused(p) {
     if (!mu || cur < 0) return;
