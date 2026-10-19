@@ -277,7 +277,10 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 @keyframes mtscroll{from{transform:translateX(0)}to{transform:translateX(var(--mt-dist,-40px))}}
 #mmsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
 #mmsheet.show{display:flex}
-.mm-row{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.mm-search{margin-bottom:10px}
+.mm-search input{width:100%;box-sizing:border-box;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:14px;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none}
+.mm-search input:focus{border-color:rgba(163,230,53,.45)}
+.mm-row{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
 .mm-row.cur{box-shadow:inset 0 0 0 1px rgba(163,230,53,.45)}
 .mm-play{width:34px;height:34px;border-radius:50%;flex:none;border:none;background:#232b3b;color:var(--lime);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .mm-name{flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -464,6 +467,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
   <div class="sheet">
     <h2>🎧 训练音乐</h2>
     <span class="f-label">训练时循环播放、自动切歌；支持锁屏 / 控制中心切歌（iOS 15+，以真机为准）。</span>
+    <div class="mm-search"><input type="search" id="mm-search" placeholder="🔍 搜索歌曲名" autocomplete="off" enterkeyhint="search"></div>
     <div id="mm-list"></div>
     <div class="media-row">
       <input type="file" id="mm-file" multiple hidden>
@@ -1359,6 +1363,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=11"></script>
+<script src="music.js?v=12"></script>
 </body>
 </html>

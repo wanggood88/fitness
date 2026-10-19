@@ -264,20 +264,31 @@
       box.innerHTML = '<div class="mm-empty">还没有音乐。点下方按钮，从「文件」App 选几首 mp3 / m4a / wav（Apple Music 正版歌有版权保护，无法导入）</div>';
       return;
     }
+    var sq = mid('mm-search');
+    var q = (sq && sq.value ? sq.value : '').trim().toLowerCase();
+    var shown = [];
     tracks.forEach(function (t, i) {
+      if (!q || (t.name || '').toLowerCase().indexOf(q) > -1) shown.push(i);
+    });
+    if (!shown.length) {
+      var esc = q.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      box.innerHTML = '<div class="mm-empty">没有匹配「' + esc + '」的歌曲</div>';
+      return;
+    }
+    shown.forEach(function (i) {
+      var t = tracks[i];
       var row = document.createElement('div');
       row.className = 'mm-row' + ((previewMode || workoutMode) && i === cur ? ' cur' : '');
       var pb = document.createElement('button');
       pb.className = 'mm-play';
       pb.innerHTML = (i === cur && playing) ? SVG_PAUSE : SVG_PLAY;
-      pb.onclick = function () {
-        if (i === cur && playing) { setPaused(true); renderSheet(); }
-        else { previewMode = !workoutMode; loadTrack(i, true); }
-      };
+      /* 整行可点：点歌名即播放该曲——随机模式下也是点哪首播哪首 */
+      row.onclick = function () { playRow(i); };
       var nm = document.createElement('div'); nm.className = 'mm-name'; nm.textContent = t.name;
       var sz = document.createElement('span'); sz.className = 'mm-size'; sz.textContent = fmtSize(t.size);
       var db = document.createElement('button'); db.className = 'mm-del'; db.innerHTML = SVG_TRASH;
-      db.onclick = function () {
+      db.onclick = function (e) {
+        e.stopPropagation();
         mReq('readwrite', function (st) { return st.delete(t.id); }).then(function () {
           return refresh();
         }).then(renderSheet).catch(function () {});
@@ -286,8 +297,13 @@
       box.appendChild(row);
     });
   }
+  function playRow(i) {
+    if (i === cur && playing) { setPaused(true); renderSheet(); }
+    else { previewMode = !workoutMode; loadTrack(i, true); }
+  }
   window.__mmRender = renderSheet;
   function openSheet() {
+    var s = mid('mm-search'); if (s) s.value = '';
     refresh().then(renderSheet);
     syncVolUI();
     mid('mmsheet').classList.add('show');
@@ -351,6 +367,7 @@
       localStorage.setItem('fit_music_shuffle', shuffle ? '1' : '0');
       syncVolUI();
     };
+    if ((b = mid('mm-search'))) b.oninput = function () { renderSheet(); };
     if ((b = mid('mbar-prev'))) b.onclick = prev;
     if ((b = mid('mbar-next'))) b.onclick = next;
     if ((b = mid('mbar-play'))) b.onclick = togglePlay;
