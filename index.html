@@ -507,7 +507,9 @@ window.addEventListener('error',function(e){
   if(!b){b=document.createElement('div');b.id='errbox';
     b.style.cssText='background:#7f1d1d;color:#fecaca;padding:8px 12px;border-radius:10px;font-size:12px;margin-bottom:10px;white-space:pre-wrap';
     document.getElementById('app').prepend(b);}
-  b.textContent+='⚠ '+(e.message||e.type)+'\n';
+  var m='⚠ '+(e.message||e.type);
+  if(b._lm===m){b._ln=(b._ln||1)+1;var ls=b.textContent.split('\n');ls[ls.length-2]=m+' ×'+b._ln;b.textContent=ls.join('\n');}
+  else{b._lm=m;b._ln=1;b.textContent+=m+'\n';}
 });
 </script>
 <script>
@@ -1363,6 +1365,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=12"></script>
+<script src="music.js?v=13"></script>
 </body>
 </html>
