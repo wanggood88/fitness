@@ -282,6 +282,8 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .mm-del{width:30px;height:30px;border-radius:9px;border:none;background:#232b3b;color:var(--red);font-size:13px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
 .mm-empty{color:var(--dim);font-size:13px;line-height:1.6;padding:6px 2px 2px}
 #mm-vol{width:150px;accent-color:#a3e635}
+.cue-vol-row{display:flex;align-items:center;gap:10px;margin:8px auto 0;max-width:488px;padding:0 16px}
+.cue-vol-row input{flex:1;accent-color:#a3e635;height:22px}
 .mm-shufbtn{padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:#232b3b;color:var(--text);font-size:14px;font-weight:700;cursor:pointer;min-width:72px;font-family:inherit}
 </style>
 </head>
@@ -298,6 +300,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     </div>
     <div class="subtitle">练一组 → 自动休息倒计时 → 下一组</div>
     <div class="summary" id="summary"></div>
+    <div class="cue-vol-row"><span class="f-label">🔔 提示音音量</span><input type="range" id="cue-vol" min="0" max="100" step="1" aria-label="提示音音量"><span class="st-unit" id="cue-vol-lab">100%</span></div>
     <div class="chips" id="chips"></div>
     <div class="ex-list" id="ex-list"></div>
     <div id="cfg-side">
@@ -589,11 +592,12 @@ function mediaRename(o,n){
 
 /* ---------- 声音 ---------- */
 var AC=null;
+var cueVol=parseFloat(localStorage.getItem('fit_cue_vol'));if(!(cueVol>=0&&cueVol<=1))cueVol=1;
 function ac(){if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C();}if(AC&&AC.state==='suspended')AC.resume();return AC;}
 function tone(freq,dur,delay,type,vol){
   if(!soundOn)return;
   try{var ctx=ac();if(!ctx)return;delay=delay||0;
-    var t=ctx.currentTime+delay,v=vol||0.75,
+    var t=ctx.currentTime+delay,v=(vol||0.75)*cueVol,
         o=ctx.createOscillator(),g=ctx.createGain(),
         o2=ctx.createOscillator(),g2=ctx.createGain();
     o.type=type||'sine';o.frequency.value=freq;
@@ -764,6 +768,10 @@ function syncSound(){document.querySelectorAll('#btn-sound1 .snd-on,#btn-sound2 
 function toggleSound(){soundOn=!soundOn;localStorage.setItem('fit_sound',soundOn?'1':'0');syncSound();if(soundOn)sTick();}
 $('#btn-sound1').onclick=toggleSound;
 $('#btn-sound2').onclick=toggleSound;
+function syncCueVol(){var r=$('#cue-vol'),lab=$('#cue-vol-lab');if(r)r.value=Math.round(cueVol*100);if(lab)lab.textContent=Math.round(cueVol*100)+'%';}
+$('#cue-vol').oninput=function(){cueVol=Math.max(0,Math.min(1,(+this.value||0)/100));localStorage.setItem('fit_cue_vol',String(cueVol));var lab=$('#cue-vol-lab');if(lab)lab.textContent=Math.round(cueVol*100)+'%';};
+$('#cue-vol').onchange=function(){if(soundOn)sTick();};
+syncCueVol();
 </script>
 <script>
 'use strict';
@@ -1348,6 +1356,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=5"></script>
+<script src="music.js?v=6"></script>
 </body>
 </html>

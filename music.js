@@ -162,7 +162,14 @@
     if (cur < 0) { loadTrack(0, true); return; }
     setPaused(false);
   }
-  function next() { if (tracks.length) { msBind(); playNext(); } }
+  function next() {
+    if (!tracks.length) return;
+    msBind();
+    /* 手动「下一首」：多于一首时随机抽，不依赖弹层的顺序/随机开关 */
+    var i = cur;
+    if (tracks.length > 1) { do { i = Math.floor(Math.random() * tracks.length); } while (i === cur); }
+    loadTrack(i, true);
+  }
   function prev() {
     if (!tracks.length) return;
     if (mu && mu.currentTime > 3) { try { mu.currentTime = 0; } catch (e) {} return; }
