@@ -156,6 +156,12 @@
     if (p) { try { mu.pause(); } catch (e) {} }
     else { var q = null; try { q = mu.play(); } catch (e) {} if (q && q.catch) q.catch(function () {}); }
   }
+  function setMuted(m) {
+    mute = !!m;
+    localStorage.setItem('fit_music_mute', mute ? '1' : '0');
+    if (mu) try { mu.muted = mute; } catch (e) {}
+    syncAll();
+  }
   function togglePlay() {
     if (!tracks.length) return;
     if (playing) { setPaused(true); return; }
@@ -181,14 +187,24 @@
     var bar = mid('mbar');
     var t = tracks[cur];
     var lab = mid('mbar-title');
-    if (lab) lab.textContent = t ? (t.name + ' · ' + (cur + 1) + '/' + tracks.length) : '—';
+    if (lab) {
+      var inn = lab.firstChild;
+      if (!inn || inn.nodeType !== 1) { inn = document.createElement('span'); inn.className = 'mt-in'; lab.appendChild(inn); }
+      inn.textContent = t ? (t.name + ' · ' + (cur + 1) + '/' + tracks.length) : '—';
+      var bar2 = mid('mbar');
+      if (bar2 && !bar2.hidden) requestAnimationFrame(function () {
+        var over = inn.scrollWidth - lab.clientWidth;
+        if (over > 6) {
+          lab.classList.add('run');
+          inn.style.setProperty('--mt-dist', '-' + (over + 8) + 'px');
+          inn.style.setProperty('--mt-dur', Math.max(5, Math.min(14, over / 15)) + 's');
+        } else lab.classList.remove('run');
+      });
+    }
     var on = mid('ic-mplay'), off = mid('ic-mpause');
     /* SVGElement 无 hidden IDL 属性，.hidden= 只是 expando 不落属性，必须 setAttribute */
     if (on) { if (playing) on.setAttribute('hidden',''); else on.removeAttribute('hidden'); }
     if (off) { if (playing) off.removeAttribute('hidden'); else off.setAttribute('hidden',''); }
-    var vOn = mid('ic-mvol'), vOff = mid('ic-mmut');
-    if (vOn) { if (mute) vOn.setAttribute('hidden',''); else vOn.removeAttribute('hidden'); }
-    if (vOff) { if (mute) vOff.removeAttribute('hidden'); else vOff.setAttribute('hidden',''); }
     if (bar) bar.hidden = !tracks.length || (!workoutMode && !previewMode);
     msState(playing ? 'playing' : 'paused');
     if (window.__mmRender) window.__mmRender();
@@ -225,8 +241,8 @@
       pb.className = 'mm-play';
       pb.innerHTML = (i === cur && playing) ? SVG_PAUSE : SVG_PLAY;
       pb.onclick = function () {
-        if (i === cur && playing) { previewMode = false; setPaused(true); renderSheet(); }
-        else { previewMode = true; workoutMode = false; loadTrack(i, true); }
+        if (i === cur && playing) { setPaused(true); renderSheet(); }
+        else { previewMode = !workoutMode; loadTrack(i, true); }
       };
       var nm = document.createElement('div'); nm.className = 'mm-name'; nm.textContent = t.name;
       var sz = document.createElement('span'); sz.className = 'mm-size'; sz.textContent = fmtSize(t.size);
@@ -308,12 +324,10 @@
     if ((b = mid('mbar-prev'))) b.onclick = prev;
     if ((b = mid('mbar-next'))) b.onclick = next;
     if ((b = mid('mbar-play'))) b.onclick = togglePlay;
-    if ((b = mid('mbar-mute'))) b.onclick = function () {
-      mute = !mute;
-      localStorage.setItem('fit_music_mute', mute ? '1' : '0');
-      if (mu) try { mu.muted = mute; } catch (e) {}
-      syncAll();
-    };
+    if ((b = mid('mbar-list'))) b.onclick = openSheet;
+    /* 静音统一由右上角声音开关控制（fit_sound），音乐条不再单独静音 */
+    mute = localStorage.getItem('fit_sound') === '0';
+    if (mu) try { mu.muted = mute; } catch (e) {}
     refresh();
     msBind();
   }
@@ -324,6 +338,8 @@
     startWorkout: startWorkout,
     stopWorkout: stopWorkout,
     setPaused: setPaused,
+    setMuted: setMuted,
+    openSheet: openSheet,
     togglePlay: togglePlay,
     next: next,
     prev: prev,

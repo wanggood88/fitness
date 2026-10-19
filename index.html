@@ -271,7 +271,10 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 #mbar[hidden]{display:none}
 #mbar button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
 #mbar button:active{transform:scale(.92)}
-#mbar-title{flex:1;min-width:0;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+#mbar-title{flex:1;min-width:0;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-align:left}
+#mbar-title .mt-in{display:inline-block;white-space:nowrap}
+#mbar-title.run .mt-in{animation:mtscroll var(--mt-dur,8s) linear infinite alternate}
+@keyframes mtscroll{from{transform:translateX(0)}to{transform:translateX(var(--mt-dist,-40px))}}
 #mmsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
 #mmsheet.show{display:flex}
 .mm-row{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
@@ -351,8 +354,8 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
         <button id="mbar-prev" aria-label="上一首"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.4 4.1v7.8c0 1-1.1 1.55-1.9 1.02L5.6 9.02c-.75-.5-.75-1.55 0-2.05l5.9-3.89c.8-.53 1.9.02 1.9 1.02z"/><rect x="1.8" y="2.8" width="2.7" height="10.4" rx="1.35"/></svg></button>
         <button id="mbar-play" aria-label="播放/暂停"><svg class="cicon" id="ic-mplay" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 2.9v10.2c0 1 1.05 1.55 1.85 1.02l7.9-5.1c.75-.48.75-1.55 0-2.03l-7.9-5.1C5.65 1.35 4.6 1.9 4.6 2.9z"/></svg><svg class="cicon" id="ic-mpause" viewBox="0 0 16 16" hidden aria-hidden="true"><rect x="3" y="2.2" width="3.6" height="11.6" rx="1.6"/><rect x="9.4" y="2.2" width="3.6" height="11.6" rx="1.6"/></svg></button>
         <button id="mbar-next" aria-label="下一首"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.6 4.1v7.8c0 1 1.1 1.55 1.9 1.02l5.9-3.9c.75-.5.75-1.55 0-2.05L4.5 3.08c-.8-.53-1.9.02-1.9 1.02z"/><rect x="11.5" y="2.8" width="2.7" height="10.4" rx="1.35"/></svg></button>
-        <div id="mbar-title">—</div>
-        <button id="mbar-mute" aria-label="静音"><svg class="cicon" id="ic-mvol" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.3 5.55L9.25 2.9c.7-.47 1.65.04 1.65.9v8.4c0 .86-.95 1.37-1.65.9L5.3 10.45z"/><rect x="2.5" y="5.55" width="3.2" height="4.9" rx="1"/><path d="M12.15 6.35c.88.88.88 2.42 0 3.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13.75 4.95c1.55 1.55 1.55 4.55 0 6.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><svg class="cicon" id="ic-mmut" viewBox="0 0 16 16" hidden aria-hidden="true"><path d="M5.3 5.55L9.25 2.9c.7-.47 1.65.04 1.65.9v8.4c0 .86-.95 1.37-1.65.9L5.3 10.45z"/><rect x="2.5" y="5.55" width="3.2" height="4.9" rx="1"/><path d="M11.9 6.6l2.8 2.8M14.7 6.6l-2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <div id="mbar-title"><span class="mt-in">—</span></div>
+        <button id="mbar-list" aria-label="音乐列表"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="1.9" height="1.9" rx=".5"/><rect x="5.8" y="3.2" width="7.8" height="1.9" rx=".95"/><rect x="2.4" y="7.05" width="1.9" height="1.9" rx=".5"/><rect x="5.8" y="7.05" width="7.8" height="1.9" rx=".95"/><rect x="2.4" y="10.9" width="1.9" height="1.9" rx=".5"/><rect x="5.8" y="10.9" width="7.8" height="1.9" rx=".95"/></svg></button>
       </div>
     </div>
   </section>
@@ -765,7 +768,7 @@ document.querySelectorAll('.st-btn').forEach(function(b){
 
 /* ---------- 声音开关 ---------- */
 function syncSound(){document.querySelectorAll('#btn-sound1 .snd-on,#btn-sound2 .snd-on').forEach(function(el){if(soundOn)el.removeAttribute('hidden');else el.setAttribute('hidden','');});document.querySelectorAll('#btn-sound1 .snd-off,#btn-sound2 .snd-off').forEach(function(el){if(soundOn)el.setAttribute('hidden','');else el.removeAttribute('hidden');});}
-function toggleSound(){soundOn=!soundOn;localStorage.setItem('fit_sound',soundOn?'1':'0');syncSound();if(soundOn)sTick();}
+function toggleSound(){soundOn=!soundOn;localStorage.setItem('fit_sound',soundOn?'1':'0');syncSound();if(window.FITMUSIC&&FITMUSIC.setMuted)FITMUSIC.setMuted(!soundOn);if(soundOn)sTick();}
 $('#btn-sound1').onclick=toggleSound;
 $('#btn-sound2').onclick=toggleSound;
 function syncCueVol(){var r=$('#cue-vol'),lab=$('#cue-vol-lab');if(r)r.value=Math.round(cueVol*100);if(lab)lab.textContent=Math.round(cueVol*100)+'%';}
@@ -1356,6 +1359,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=6"></script>
+<script src="music.js?v=7"></script>
 </body>
 </html>
