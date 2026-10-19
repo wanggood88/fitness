@@ -414,7 +414,10 @@
     if ((b = mid('mm-close'))) b.onclick = closeSheet;
     var sh = mid('mmsheet');
     if (sh) sh.addEventListener('click', function (e) { if (e.target === sh) closeSheet(); });
-    if ((b = mid('mm-add'))) b.onclick = function () { mid('mm-file').click(); };
+    if ((b = mid('mm-add'))) b.onclick = function () {
+      if (window.AndroidBridge && AndroidBridge.pickAudio) AndroidBridge.pickAudio();
+      else mid('mm-file').click();
+    };
     if ((b = mid('mm-file'))) b.onchange = function () {
       if (this.files && this.files.length) addFiles(this.files);
       else {
