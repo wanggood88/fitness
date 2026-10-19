@@ -245,10 +245,13 @@
   function addFiles(fl) {
     var MIME = { mp3: 'audio/mpeg', m4a: 'audio/mp4', m4b: 'audio/mp4', mp4: 'audio/mp4', wav: 'audio/wav', aac: 'audio/aac', flac: 'audio/flac', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', aif: 'audio/aiff', aiff: 'audio/aiff', caf: 'audio/x-caf' };
     var jobs = [];
+    var skipped = 0;
     [].slice.call(fl).forEach(function (f) {
       if (!f) return;
-      var nm = (f.name || '音乐').replace(/\.(mp3|m4a|mp4|wav|aac|flac|ogg|oga|wma|aiff?|caf)$/i, '').slice(0, 40) || '音乐';
       var ext = (f.name || '').toLowerCase().split('.').pop();
+      /* Android 全量文件选择器会给出任意类型，非音频直接跳过 */
+      if (!((f.type && f.type.indexOf('audio/') === 0) || MIME[ext])) { skipped++; return; }
+      var nm = (f.name || '音乐').replace(/\.(mp3|m4a|mp4|wav|aac|flac|ogg|oga|wma|aiff?|caf)$/i, '').slice(0, 40) || '音乐';
       if ((!f.type || f.type === 'application/octet-stream') && MIME[ext]) {
         try { f = new Blob([f], { type: MIME[ext] }); } catch (e) {}
       }
@@ -257,7 +260,7 @@
     });
     return Promise.all(jobs).then(refresh).then(function () {
       var err = mid('mm-err');
-      if (err) err.textContent = jobs.length ? ('已导入 ' + jobs.length + ' 首 ✓') : '';
+      if (err) err.textContent = jobs.length ? ('已导入 ' + jobs.length + ' 首 ✓' + (skipped ? '（跳过 ' + skipped + ' 个非音频）' : '')) : (skipped ? '没有可导入的音频文件' : '');
       setTimeout(function () { if (err) err.textContent = ''; }, 2500);
     }).catch(function () {
       var err = mid('mm-err');
