@@ -34,6 +34,7 @@ import androidx.webkit.WebSettingsCompat;
 import org.json.JSONObject;
 
 import java.io.InputStream;
+import java.net.URLConnection;
 
 /**
  * 离线 WebView 壳：全部网页资源打进 APK（assets/app/），通过 WebViewAssetLoader
@@ -74,12 +75,20 @@ public class MainActivity extends AppCompatActivity {
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
-                /* PathHandler 收到的是剥掉 /app/ 前缀后的路径，需手动映射到 assets/app/ */
+                /* PathHandler 收到的是剥掉 /app/ 前缀后的路径，手动映射到 assets/app/；
+                   webkit 1.10 签名是返回 WebResourceResponse（非 InputStream），找不到文件回 404 响应 */
                 .addPathHandler("/app/", new WebViewAssetLoader.PathHandler() {
                     @Nullable
                     @Override
-                    public InputStream handle(@NonNull String path) {
-                        try { return getAssets().open("app/" + path); } catch (Exception e) { return null; }
+                    public WebResourceResponse handle(@NonNull String path) {
+                        try {
+                            InputStream is = getAssets().open("app/" + path);
+                            String mime = URLConnection.guessContentTypeFromName(path);
+                            if (mime == null) mime = "application/octet-stream";
+                            return new WebResourceResponse(mime, null, is);
+                        } catch (Exception e) {
+                            return new WebResourceResponse(null, null, null); /* 404 */
+                        }
                     }
                 })
                 .build();
