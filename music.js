@@ -53,6 +53,9 @@
   var tracks = [], cur = -1, playing = false, workoutMode = false, previewMode = false, errStreak = 0;
   var mu = null, objUrl = null, msBound = false, loadGen = 0;
   var seekDrag = false, seekDragT = 0;
+  /* APK 原生壳里走 AndroidBridge（原生 MediaSession 通知），屏蔽 Web MediaSession 避免双会话 */
+  var NATIVE_MS = false;
+  try { NATIVE_MS = !!(window.AndroidBridge && window.AndroidBridge.msUpdate); } catch (e) {}
   var vol = parseFloat(localStorage.getItem('fit_music_vol'));
   if (isNaN(vol)) vol = 0.8;
   vol = Math.max(0, Math.min(1, vol));
@@ -130,7 +133,7 @@
 
   /* ---------- Media Session（锁屏/控制中心） ---------- */
   function msMeta(name) {
-    if (!('mediaSession' in navigator)) return;
+    if (NATIVE_MS || !('mediaSession' in navigator)) return;
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: name || '训练音乐', artist: '健身提醒', album: 'Workout',
@@ -139,7 +142,7 @@
     } catch (e) {}
   }
   function msBind() {
-    if (msBound || !('mediaSession' in navigator)) return;
+    if (msBound || NATIVE_MS || !('mediaSession' in navigator)) return;
     msBound = true;
     var N = navigator.mediaSession;
     try { N.setActionHandler('play', function () { togglePlay(); }); } catch (e) {}
@@ -150,14 +153,28 @@
     try { N.setActionHandler('seekbackward', function (d) { if (mu) { try { mu.currentTime = Math.max(0, mu.currentTime - ((d && d.seekOffset) || 10)); } catch (e) {} } }); } catch (e) {}
     try { N.setActionHandler('seekforward', function (d) { if (mu) { var t = mu.currentTime + ((d && d.seekOffset) || 10); if (isFinite(mu.duration)) t = Math.min(t, mu.duration); try { mu.currentTime = t; } catch (e) {} } }); } catch (e) {}
   }
-  function msState(s) { try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = s; } catch (e) {} }
+  function msState(s) { if (NATIVE_MS) return; try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = s; } catch (e) {} }
   /* 通知栏/锁屏进度条：由系统按 playbackRate 插值推进，播/停/拖时重设基准 */
   function msPos() {
-    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    if (NATIVE_MS || !('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
     if (!mu) return;
     var d = mu.duration;
     if (!isFinite(d) || d <= 0) return;
     try { navigator.mediaSession.setPositionState({ duration: d, position: Math.max(0, Math.min(mu.currentTime || 0, d)), playbackRate: mu.playbackRate || 1 }); } catch (e) {}
+  }
+  /* APK 原生媒体通知：把标题/播放态/进度推给 AndroidBridge（约 4Hz，通知栏 seekbar 数据源） */
+  function msBridgePush() {
+    var B = window.AndroidBridge;
+    if (!B || !B.msUpdate) return;
+    var t = tracks[cur], d = mu ? mu.duration : 0;
+    try {
+      B.msUpdate(JSON.stringify({
+        title: t ? t.name : '', playing: !!playing,
+        active: tracks.length > 0 && (workoutMode || previewMode || playing),
+        pos: mu ? Math.max(0, mu.currentTime || 0) : 0,
+        dur: isFinite(d) ? d : 0
+      }));
+    } catch (e) {}
   }
 
   /* ---------- 训练流程接入 ---------- */
@@ -218,6 +235,7 @@
     var p = Math.max(0, Math.min(1000, Math.round(t / d * 1000)));
     sk.value = p; sk.style.setProperty('--fill', (p / 10) + '%');
     if (tl) tl.textContent = fmtT(t) + ' / ' + fmtT(d);
+    msBridgePush();
   }
 
   /* ---------- 顶部/训练页音乐条 ---------- */
@@ -269,6 +287,7 @@
     if (bar) bar.hidden = !tracks.length || (!workoutMode && !previewMode);
     msState(playing ? 'playing' : 'paused');
     syncSeek();
+    msBridgePush();
     if (window.__mmRender) window.__mmRender();
   }
   function fmtSize(n) {
@@ -439,6 +458,12 @@
     togglePlay: togglePlay,
     next: next,
     prev: prev,
+    seek: function (t) {
+      if (!mu || !isFinite(t)) return;
+      var x = Math.max(0, t);
+      if (isFinite(mu.duration)) x = Math.min(x, mu.duration);
+      try { mu.currentTime = x; } catch (e) {}
+    },
     hasTracks: function () { return tracks.length > 0; },
     _dbg: function () {
       return { n: tracks.length, cur: cur, playing: playing, workout: workoutMode, preview: previewMode,
