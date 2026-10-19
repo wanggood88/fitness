@@ -593,18 +593,26 @@ function ac(){if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)
 function tone(freq,dur,delay,type,vol){
   if(!soundOn)return;
   try{var ctx=ac();if(!ctx)return;delay=delay||0;
-    var t=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();
+    var t=ctx.currentTime+delay,v=vol||0.75,
+        o=ctx.createOscillator(),g=ctx.createGain(),
+        o2=ctx.createOscillator(),g2=ctx.createGain();
     o.type=type||'sine';o.frequency.value=freq;
     g.gain.setValueAtTime(0.0001,t);
-    g.gain.exponentialRampToValueAtTime(vol||0.25,t+0.02);
+    g.gain.exponentialRampToValueAtTime(v,t+0.02);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+    /* 八度方波叠加：小扬声器上更穿透 */
+    o2.type='square';o2.frequency.value=freq*2;
+    g2.gain.setValueAtTime(0.0001,t);
+    g2.gain.exponentialRampToValueAtTime(v*0.22,t+0.02);
+    g2.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o2.connect(g2);g2.connect(ctx.destination);o2.start(t);o2.stop(t+dur+0.05);
   }catch(e){}
 }
-function sTick(){tone(850,0.1);}
-function sGo(){tone(1046,0.12);tone(1046,0.18,0.15);}
-function sDing(){tone(880,0.15);tone(1318,0.25,0.12);}
-function sFanfare(){tone(660,0.15);tone(880,0.15,0.15);tone(1100,0.3,0.3);}
+function sTick(){tone(850,0.15);}
+function sGo(){tone(1046,0.16);tone(1046,0.22,0.18);}
+function sDing(){tone(880,0.18);tone(1318,0.32,0.14);}
+function sFanfare(){tone(660,0.15);tone(880,0.15,0.15);tone(1100,0.45,0.3);}
 function vibrate(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
 </script>
 <script>
