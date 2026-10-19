@@ -367,25 +367,37 @@
     var MIME = { mp3: 'audio/mpeg', m4a: 'audio/mp4', m4b: 'audio/mp4', mp4: 'audio/mp4', wav: 'audio/wav', aac: 'audio/aac', flac: 'audio/flac', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', aif: 'audio/aiff', aiff: 'audio/aiff', caf: 'audio/x-caf' };
     var jobs = [];
     var skipped = 0;
-    [].slice.call(fl).forEach(function (f) {
+    var types = [];
+    [].slice.call(fl || []).forEach(function (f) {
       if (!f) return;
       var ext = (f.name || '').toLowerCase().split('.').pop();
       /* Android 全量文件选择器会给出任意类型，非音频直接跳过 */
-      if (!((f.type && f.type.indexOf('audio/') === 0) || MIME[ext])) { skipped++; return; }
+      var mime = (f.type && f.type.indexOf('audio/') === 0) ? f.type : MIME[ext];
+      if (!mime) { skipped++; if (types.length < 2) types.push(((f.name || '').slice(0, 14) || '?') + ':' + (f.type || ext || '?')); return; }
       var nm = (f.name || '音乐').replace(/\.(mp3|m4a|mp4|wav|aac|flac|ogg|oga|wma|aiff?|caf)$/i, '').slice(0, 40) || '音乐';
-      if ((!f.type || f.type === 'application/octet-stream') && MIME[ext]) {
-        try { f = new Blob([f], { type: MIME[ext] }); } catch (e) {}
-      }
       var id = 'm' + Date.now() + Math.random().toString(36).slice(2, 7);
-      jobs.push(mReq('readwrite', function (st) { return st.put({ name: nm, size: f.size || 0, blob: f }, id); }));
+      /* 先读进内存再落库：部分 WebView 对选择器给的 File（content:// 惰性 blob）直接存 IDB 会失败 */
+      var p = (f.arrayBuffer ? f.arrayBuffer() : Promise.reject(new Error('文件不可读')))
+        .catch(function () { return null; })
+        .then(function (buf) {
+          var blob = buf ? new Blob([buf], { type: mime }) : f;
+          return mReq('readwrite', function (st) { return st.put({ name: nm, size: buf ? blob.size : (f.size || 0), blob: blob }, id); });
+        });
+      jobs.push(p);
     });
     return Promise.all(jobs).then(refresh).then(function () {
+      var err = mid('mm-err'), msg;
+      if (jobs.length && tracks.length) msg = '已导入 ' + jobs.length + ' 首 ✓' + (skipped ? '（跳过 ' + skipped + ' 个非音频）' : '');
+      else if (jobs.length) msg = '写入成功但读取失败，请重启应用再试';
+      else if (skipped) msg = '没有可导入的音频文件：' + (types.join(' / ') || skipped + ' 个');
+      else msg = '没有取到文件';
+      if (err) err.textContent = msg;
+      setTimeout(function () { if (err && err.textContent === msg) err.textContent = ''; }, 4000);
+    }).catch(function (e) {
       var err = mid('mm-err');
-      if (err) err.textContent = jobs.length ? ('已导入 ' + jobs.length + ' 首 ✓' + (skipped ? '（跳过 ' + skipped + ' 个非音频）' : '')) : (skipped ? '没有可导入的音频文件' : '');
-      setTimeout(function () { if (err) err.textContent = ''; }, 2500);
-    }).catch(function () {
-      var err = mid('mm-err');
-      if (err) err.textContent = '导入失败，请重试';
+      var msg = '导入失败：' + (e && e.message ? e.message : '存储错误');
+      if (err) err.textContent = msg;
+      setTimeout(function () { if (err && err.textContent === msg) err.textContent = ''; }, 5000);
     });
   }
   function syncVolUI() {
@@ -405,6 +417,10 @@
     if ((b = mid('mm-add'))) b.onclick = function () { mid('mm-file').click(); };
     if ((b = mid('mm-file'))) b.onchange = function () {
       if (this.files && this.files.length) addFiles(this.files);
+      else {
+        var err = mid('mm-err');
+        if (err) { err.textContent = '没有取到文件'; setTimeout(function () { if (err) err.textContent = ''; }, 3000); }
+      }
       this.value = '';
     };
     if ((b = mid('mm-vol'))) b.oninput = function () {
