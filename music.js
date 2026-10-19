@@ -52,6 +52,7 @@
   /* ---------- 状态 ---------- */
   var tracks = [], cur = -1, playing = false, workoutMode = false, previewMode = false, errStreak = 0;
   var mu = null, objUrl = null, msBound = false, loadGen = 0;
+  var seekDrag = false, seekDragT = 0;
   var vol = parseFloat(localStorage.getItem('fit_music_vol'));
   if (isNaN(vol)) vol = 0.8;
   vol = Math.max(0, Math.min(1, vol));
@@ -65,6 +66,9 @@
     mu.volume = vol; mu.muted = mute;
     mu.addEventListener('ended', onEnded);
     mu.addEventListener('error', onError);
+    mu.addEventListener('timeupdate', syncSeek);
+    mu.addEventListener('loadedmetadata', syncSeek);
+    mu.addEventListener('seeked', syncSeek);
     mu.addEventListener('playing', function () { errStreak = 0; playing = true; syncAll(); });
     mu.addEventListener('pause', function () { if (mu && !mu.ended) { playing = false; syncAll(); } });
     return mu;
@@ -189,6 +193,18 @@
     loadTrack(cur - 1, true);
   }
 
+  /* ---------- 播放进度条 ---------- */
+  function fmtT(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function syncSeek() {
+    var sk = mid('mbar-seek'); if (!sk) return;
+    var bar = mid('mbar'); if (!bar || bar.hidden || seekDrag) return;
+    var d = mu ? mu.duration : 0, t = mu ? mu.currentTime : 0, tl = mid('mbar-time');
+    if (!isFinite(d) || d <= 0) { sk.value = 0; sk.style.setProperty('--fill', '0%'); if (tl) tl.textContent = ''; return; }
+    var p = Math.max(0, Math.min(1000, Math.round(t / d * 1000)));
+    sk.value = p; sk.style.setProperty('--fill', (p / 10) + '%');
+    if (tl) tl.textContent = fmtT(t) + ' / ' + fmtT(d);
+  }
+
   /* ---------- 顶部/训练页音乐条 ---------- */
   function setTitle(s) {
     var lab = mid('mbar-title'); if (!lab) return null;
@@ -237,6 +253,7 @@
     if (off) { if (playing) off.removeAttribute('hidden'); else off.setAttribute('hidden',''); }
     if (bar) bar.hidden = !tracks.length || (!workoutMode && !previewMode);
     msState(playing ? 'playing' : 'paused');
+    syncSeek();
     if (window.__mmRender) window.__mmRender();
   }
   function fmtSize(n) {
@@ -372,6 +389,23 @@
     if ((b = mid('mbar-next'))) b.onclick = next;
     if ((b = mid('mbar-play'))) b.onclick = togglePlay;
     if ((b = mid('mbar-list'))) b.onclick = openSheet;
+    if ((b = mid('mbar-seek'))) {
+      b.addEventListener('input', function () {
+        seekDrag = true;
+        clearTimeout(seekDragT); seekDragT = setTimeout(function () { seekDrag = false; syncSeek(); }, 1000);
+        var d = mu ? mu.duration : 0, tl = mid('mbar-time');
+        if (isFinite(d) && d > 0) {
+          this.style.setProperty('--fill', (this.value / 10) + '%');
+          if (tl) tl.textContent = fmtT(this.value / 1000 * d) + ' / ' + fmtT(d);
+        }
+      });
+      b.addEventListener('change', function () {
+        clearTimeout(seekDragT); seekDragT = 0; seekDrag = false;
+        var d = mu ? mu.duration : 0;
+        if (isFinite(d) && d > 0 && mu) { try { mu.currentTime = this.value / 1000 * d; } catch (e) {} }
+        syncSeek();
+      });
+    }
     /* 静音统一由右上角声音开关控制（fit_sound），音乐条不再单独静音 */
     mute = localStorage.getItem('fit_sound') === '0';
     if (mu) try { mu.muted = mute; } catch (e) {}
