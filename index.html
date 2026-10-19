@@ -268,13 +268,18 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 }
 /* ---------- 训练音乐（fit-v21） ---------- */
 .p-controls{flex-wrap:wrap}
-#mbar{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:4px;min-width:0;max-width:100%}
+#mbar{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px;min-width:0;max-width:100%}
 #mbar[hidden]{display:none}
 #mbar button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
 #mbar button:active{transform:scale(.92)}
 #mbar-title{flex:1 1 0;min-width:0;max-width:60%;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-align:left}
 #mbar-title .mt-in{display:inline-block;white-space:nowrap;width:max-content}
 #mbar-title.run .mt-in{animation:mtscroll var(--mt-dur,8s) linear infinite alternate}
+#mbar-seekrow{flex:1 1 100%;display:flex;align-items:center;gap:8px;min-width:0}
+#mbar-seek{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:20px;background:transparent;margin:0;padding:0;--fill:0%;touch-action:none}
+#mbar-seek::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--lime) var(--fill),rgba(255,255,255,.16) var(--fill))}
+#mbar-seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:50%;background:var(--lime);margin-top:-4px;border:none}
+#mbar-time{flex:none;font-size:11px;color:var(--dim);white-space:nowrap}
 @keyframes mtscroll{from{transform:translateX(0)}to{transform:translateX(var(--mt-dist,-40px))}}
 #mmsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
 #mmsheet.show{display:flex}
@@ -360,6 +365,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
         <button id="mbar-next" aria-label="下一首"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.6 4.1v7.8c0 1 1.1 1.55 1.9 1.02l5.9-3.9c.75-.5.75-1.55 0-2.05L4.5 3.08c-.8-.53-1.9.02-1.9 1.02z"/><rect x="11.5" y="2.8" width="2.7" height="10.4" rx="1.35"/></svg></button>
         <div id="mbar-title"><span class="mt-in">—</span></div>
         <button id="mbar-list" aria-label="音乐列表"><svg class="cicon" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.4" y="3.2" width="1.9" height="1.9" rx=".5"/><rect x="5.8" y="3.2" width="7.8" height="1.9" rx=".95"/><rect x="2.4" y="7.05" width="1.9" height="1.9" rx=".5"/><rect x="5.8" y="7.05" width="7.8" height="1.9" rx=".95"/><rect x="2.4" y="10.9" width="1.9" height="1.9" rx=".5"/><rect x="5.8" y="10.9" width="7.8" height="1.9" rx=".95"/></svg></button>
+        <div id="mbar-seekrow"><input type="range" id="mbar-seek" min="0" max="1000" step="1" value="0" aria-label="播放进度"><span id="mbar-time"></span></div>
       </div>
     </div>
   </section>
@@ -1366,6 +1372,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=13"></script>
+<script src="music.js?v=14"></script>
 </body>
 </html>
