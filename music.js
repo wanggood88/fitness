@@ -176,11 +176,12 @@
     var lab = mid('mbar-title');
     if (lab) lab.textContent = t ? (t.name + ' · ' + (cur + 1) + '/' + tracks.length) : '—';
     var on = mid('ic-mplay'), off = mid('ic-mpause');
-    if (on) on.hidden = playing;
-    if (off) off.hidden = !playing;
+    /* SVGElement 无 hidden IDL 属性，.hidden= 只是 expando 不落属性，必须 setAttribute */
+    if (on) { if (playing) on.setAttribute('hidden',''); else on.removeAttribute('hidden'); }
+    if (off) { if (playing) off.removeAttribute('hidden'); else off.setAttribute('hidden',''); }
     var vOn = mid('ic-mvol'), vOff = mid('ic-mmut');
-    if (vOn) vOn.hidden = mute;
-    if (vOff) vOff.hidden = !mute;
+    if (vOn) { if (mute) vOn.setAttribute('hidden',''); else vOn.removeAttribute('hidden'); }
+    if (vOff) { if (mute) vOff.removeAttribute('hidden'); else vOff.setAttribute('hidden',''); }
     if (bar) bar.hidden = !tracks.length || (!workoutMode && !previewMode);
     msState(playing ? 'playing' : 'paused');
     if (window.__mmRender) window.__mmRender();

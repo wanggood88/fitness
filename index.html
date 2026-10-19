@@ -760,7 +760,7 @@ document.querySelectorAll('.st-btn').forEach(function(b){
 });
 
 /* ---------- 声音开关 ---------- */
-function syncSound(){document.querySelectorAll('#btn-sound1 .snd-on,#btn-sound2 .snd-on').forEach(function(el){el.hidden=!soundOn;});document.querySelectorAll('#btn-sound1 .snd-off,#btn-sound2 .snd-off').forEach(function(el){el.hidden=soundOn;});}
+function syncSound(){document.querySelectorAll('#btn-sound1 .snd-on,#btn-sound2 .snd-on').forEach(function(el){if(soundOn)el.removeAttribute('hidden');else el.setAttribute('hidden','');});document.querySelectorAll('#btn-sound1 .snd-off,#btn-sound2 .snd-off').forEach(function(el){if(soundOn)el.setAttribute('hidden','');else el.removeAttribute('hidden');});}
 function toggleSound(){soundOn=!soundOn;localStorage.setItem('fit_sound',soundOn?'1':'0');syncSound();if(soundOn)sTick();}
 $('#btn-sound1').onclick=toggleSound;
 $('#btn-sound2').onclick=toggleSound;
@@ -860,8 +860,8 @@ function updatePauseBtn(){
   b.disabled=!can;
   var paused=!!(session&&session.paused);
   $('#lb-pause').textContent=paused?'继续':'暂停';
-  $('#ic-pause').hidden=paused;
-  $('#ic-resume').hidden=!paused;
+  if(paused)$('#ic-pause').setAttribute('hidden','');else $('#ic-pause').removeAttribute('hidden');
+  if(paused)$('#ic-resume').removeAttribute('hidden');else $('#ic-resume').setAttribute('hidden','');
   $('#big-time').classList.toggle('paused',paused);
 }
 function nextLabel(){
@@ -1348,6 +1348,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=4"></script>
+<script src="music.js?v=5"></script>
 </body>
 </html>
