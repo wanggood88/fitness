@@ -39,7 +39,8 @@
   --g-text2:linear-gradient(180deg,#e8eef7,#939eae); --g-sheen:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,"PingFang SC",sans-serif;min-height:100vh}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,"PingFang SC",sans-serif;min-height:100vh;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text}
 #app{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px)}
 section{display:none}
 section.active{display:block}
