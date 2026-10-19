@@ -5,13 +5,16 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -32,10 +35,16 @@ import androidx.core.app.NotificationCompat;
 import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebSettingsCompat;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 离线 WebView 壳：全部网页资源打进 APK（assets/app/），通过 WebViewAssetLoader
@@ -76,8 +85,7 @@ public class MainActivity extends AppCompatActivity {
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
-                /* PathHandler 收到的是剥掉 /app/ 前缀后的路径，手动映射到 assets/app/；
-                   webkit 1.10 签名是返回 WebResourceResponse（非 InputStream），找不到文件回 404 响应 */
+                /* PathHandler 收到的是剥掉前缀后的路径：/app/ → assets/app/，/cache/ → 应用缓存 pick 目录 */
                 .addPathHandler("/app/", new WebViewAssetLoader.PathHandler() {
                     @Nullable
                     @Override
@@ -87,6 +95,21 @@ public class MainActivity extends AppCompatActivity {
                             String mime = URLConnection.guessContentTypeFromName(path);
                             if (mime == null) mime = "application/octet-stream";
                             return new WebResourceResponse(mime, null, is);
+                        } catch (Exception e) {
+                            return new WebResourceResponse(null, null, null); /* 404 */
+                        }
+                    }
+                })
+                .addPathHandler("/cache/", new WebViewAssetLoader.PathHandler() {
+                    @Nullable
+                    @Override
+                    public WebResourceResponse handle(@NonNull String path) {
+                        try {
+                            File f = new File(getCacheDir(), "pick/" + path);
+                            if (!f.isFile()) return new WebResourceResponse(null, null, null);
+                            String mime = URLConnection.guessContentTypeFromName(path);
+                            if (mime == null) mime = "application/octet-stream";
+                            return new WebResourceResponse(mime, null, new FileInputStream(f));
                         } catch (Exception e) {
                             return new WebResourceResponse(null, null, null); /* 404 */
                         }
@@ -161,6 +184,84 @@ public class MainActivity extends AppCompatActivity {
         public void msUpdate(final String json) {
             runOnUiThread(new Runnable() { @Override public void run() { applyMedia(json); } });
         }
+
+        /* 原生选文件：绕开 WebView 文件选择回传链路（结果在某些 ROM/WebView 上丢失） */
+        @JavascriptInterface
+        public void pickAudio() {
+            runOnUiThread(new Runnable() { @Override public void run() { startNativePick(FILE_REQ_NATIVE_AUDIO); } });
+        }
+
+        @JavascriptInterface
+        public void pickMedia() {
+            runOnUiThread(new Runnable() { @Override public void run() { startNativePick(FILE_REQ_NATIVE_MEDIA); } });
+        }
+    }
+
+    private static final int FILE_REQ_NATIVE_AUDIO = 4002;
+    private static final int FILE_REQ_NATIVE_MEDIA = 4003;
+
+    private void startNativePick(int req) {
+        try {
+            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            if (req == FILE_REQ_NATIVE_AUDIO) i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            startActivityForResult(i, req);
+        } catch (Exception e) {
+            Toast.makeText(this, "无法打开选择器", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String queryDisplayName(Uri u) {
+        Cursor c = null;
+        try {
+            c = getContentResolver().query(u, null, null, null, null);
+            if (c != null && c.moveToFirst()) {
+                int ix = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (ix >= 0) return c.getString(ix);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (c != null) try { c.close(); } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
+    private void handleNativePick(int req, int res, Intent data) {
+        if (res != Activity.RESULT_OK || data == null) {
+            Toast.makeText(this, "未选择文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<Uri> uris = new ArrayList<>();
+        ClipData cd = data.getClipData();
+        if (cd != null) { for (int i = 0; i < cd.getItemCount(); i++) uris.add(cd.getItemAt(i).getUri()); }
+        else if (data.getData() != null) uris.add(data.getData());
+        if (uris.isEmpty()) { Toast.makeText(this, "未获取到文件", Toast.LENGTH_SHORT).show(); return; }
+        File dir = new File(getCacheDir(), "pick");
+        File[] olds = dir.listFiles();
+        if (olds != null) for (File f : olds) f.delete();
+        dir.mkdirs();
+        JSONArray names = new JSONArray();
+        int n = 0;
+        for (Uri u : uris) {
+            try {
+                String nm = queryDisplayName(u);
+                if (nm == null || nm.trim().length() == 0) nm = "file_" + (++n);
+                nm = nm.replaceAll("[/\\\\]", "_");
+                InputStream in = getContentResolver().openInputStream(u);
+                FileOutputStream fo = new FileOutputStream(new File(dir, nm));
+                byte[] buf = new byte[65536];
+                int r;
+                while ((r = in.read(buf)) > 0) fo.write(buf, 0, r);
+                fo.close();
+                in.close();
+                names.put(nm);
+            } catch (Exception ignored) {}
+        }
+        if (names.length() == 0) { Toast.makeText(this, "文件读取失败", Toast.LENGTH_SHORT).show(); return; }
+        Toast.makeText(this, "已读取 " + names.length() + " 个文件", Toast.LENGTH_SHORT).show();
+        final String kind = req == FILE_REQ_NATIVE_AUDIO ? "AUDIO" : "MEDIA";
+        web.evaluateJavascript("window.__onNativePick&&window.__onNativePick('" + kind + "'," + names.toString() + ")", null);
     }
 
     /* ---------- 媒体通知（WebView 不自带，原生补齐） ---------- */
@@ -244,6 +345,10 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "已收到文件：" + (uris == null ? "无（取消）" : uris.length + " 个"), Toast.LENGTH_SHORT).show();
             fileCb.onReceiveValue(uris);
             fileCb = null;
+            return;
+        }
+        if (req == FILE_REQ_NATIVE_AUDIO || req == FILE_REQ_NATIVE_MEDIA) {
+            handleNativePick(req, res, data);
         }
     }
 
