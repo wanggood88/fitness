@@ -516,14 +516,17 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 <div id="fs-view"><span id="fs-tip">点击任意处退出全屏</span></div>
 
 <script>
-window.addEventListener('error',function(e){
+function addErr(m){
   var b=document.getElementById('errbox');
   if(!b){b=document.createElement('div');b.id='errbox';
     b.style.cssText='background:#7f1d1d;color:#fecaca;padding:8px 12px;border-radius:10px;font-size:12px;margin-bottom:10px;white-space:pre-wrap';
     document.getElementById('app').prepend(b);}
-  var m='⚠ '+(e.message||e.type);
   if(b._lm===m){b._ln=(b._ln||1)+1;var ls=b.textContent.split('\n');ls[ls.length-2]=m+' ×'+b._ln;b.textContent=ls.join('\n');}
   else{b._lm=m;b._ln=1;b.textContent+=m+'\n';}
+}
+window.addEventListener('error',function(e){addErr('⚠ '+(e.message||e.type));});
+window.addEventListener('unhandledrejection',function(e){
+  var r=e&&e.reason;addErr('⚠ '+(r&&r.message?r.message:String(r)));
 });
 </script>
 <script>
@@ -757,9 +760,8 @@ function resetMediaUI(name){
     else if($('#m-url').value.trim())setMediaInfo('未设置本地素材，将使用在线链接',false);
   }).catch(function(){});
 }
-$('#m-media-pick').onclick=function(){$('#m-media-file').click();};
-$('#m-media-file').onchange=function(){
-  var f=this.files&&this.files[0];if(!f)return;
+function importMediaFile(f){
+  if(!f)return;
   clearPreview();
   previewUrl=URL.createObjectURL(f);
   var pv=$('#m-media-preview');
@@ -769,6 +771,21 @@ $('#m-media-file').onchange=function(){
   pendingMedia={t:'file',file:f};
   var mb=(f.size/1048576).toFixed(1);
   setMediaInfo('已选择：'+f.name+'（'+mb+' MB）'+(f.size>83886080?'，文件较大请留意空间':''),true);
+}
+$('#m-media-pick').onclick=function(){
+  if(window.AndroidBridge&&AndroidBridge.pickMedia)AndroidBridge.pickMedia();
+  else $('#m-media-file').click();
+};
+$('#m-media-file').onchange=function(){importMediaFile(this.files&&this.files[0]);};
+/* APK 原生选文件桥：AndroidBridge 把所选文件拷到应用缓存，本页从虚拟域 fetch 回来当 File 用 */
+window.__onNativePick=function(kind,names){
+  var BASE='https://appassets.androidplatform.net/cache/';
+  Promise.all((names||[]).map(function(n){
+    return fetch(BASE+encodeURIComponent(n)).then(function(r){return r.blob();}).then(function(b){return new File([b],n);});
+  })).then(function(files){
+    if(kind==='AUDIO'){if(window.FITMUSIC&&FITMUSIC._import)FITMUSIC._import(files);}
+    else if(kind==='MEDIA'){importMediaFile(files[0]);}
+  }).catch(function(e){setTimeout(function(){throw e;},0);});
 };
 $('#m-media-clear').onclick=function(){
   pendingMedia={t:'remove'};clearPreview();
@@ -1398,6 +1415,6 @@ if('serviceWorker' in navigator && location.protocol==='https:' && !window.Andro
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=17"></script>
+<script src="music.js?v=18"></script>
 </body>
 </html>
