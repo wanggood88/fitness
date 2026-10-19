@@ -179,6 +179,11 @@ input[type=number]:focus{border-color:var(--lime)}
 .sheet-btns .btn{padding:13px}
 .top-actions{display:flex;gap:8px}
 .hs-stats{display:flex;gap:10px}
+.hs-heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px;overflow-x:auto;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.hs-heat i{width:13px;height:13px;border-radius:3.5px;background:rgba(255,255,255,.06);flex:none}
+.hs-heat i.l1{background:rgba(163,230,53,.28)}
+.hs-heat i.l2{background:rgba(163,230,53,.55)}
+.hs-heat i.l3{background:var(--lime)}
 h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .chart{display:flex;align-items:stretch;gap:8px;height:120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px 8px}
 .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
@@ -396,6 +401,8 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <div class="stat"><b id="hs-total">0</b><span>累计次数</span></div>
       <div class="stat"><b id="hs-mins">0</b><span>累计分钟</span></div>
     </div>
+    <h2 class="sec">打卡日历</h2>
+    <div class="hs-heat" id="hs-heat"></div>
     <h2 class="sec">最近 7 天（分钟）</h2>
     <div class="chart" id="hs-chart"></div>
     <h2 class="sec">历史明细</h2>
@@ -1253,12 +1260,29 @@ function streak(){
   while(days[key(cur)]){n++;cur.setDate(cur.getDate()-1);}
   return n;
 }
+function renderHeat(){
+  var box=$('#hs-heat');box.innerHTML='';
+  var now=new Date(),dow=(now.getDay()+6)%7,start;
+  function key(d){return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();}
+  var days={};
+  trainLog.forEach(function(r){var d=new Date(r.t);var k=key(d);days[k]=(days[k]||0)+1;});
+  start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-dow-15*7); /* 16 周，周一开头 */
+  for(var i=0;i<16*7;i++){
+    var dd=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    var c=document.createElement('i'),n=days[key(dd)]||0;
+    if(n>=3)c.className='l3';else if(n===2)c.className='l2';else if(n===1)c.className='l1';
+    if(dd.getTime()>now.getTime())c.style.visibility='hidden'; /* 本周未到的日子留空 */
+    c.title=(dd.getMonth()+1)+'月'+dd.getDate()+'日'+(n?' · 打卡 '+n+' 次':'');
+    box.appendChild(c);
+  }
+}
 function renderHistory(){
   var tot=0;trainLog.forEach(function(r){tot+=r.secs;});
   $('#hs-week').textContent=weekCount();
   $('#hs-streak').textContent=streak();
   $('#hs-total').textContent=trainLog.length;
   $('#hs-mins').textContent=Math.round(tot/60);
+  renderHeat();
   var data=[],max=1;
   for(var i=6;i>=0;i--){
     var a=dayStart(i),b=dayStart(i-1),mins=0;
@@ -1372,6 +1396,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=14"></script>
+<script src="music.js?v=15"></script>
 </body>
 </html>
