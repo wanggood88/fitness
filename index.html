@@ -140,7 +140,7 @@ h1{font-size:22px;font-weight:800;background:var(--g-rain);background-clip:text;
 input[type=url]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:16px;font-family:inherit;outline:none}
 input[type=url]:focus{border-color:var(--lime)}
 .btn-manual{background:var(--g-ex);color:#0a0f05;margin-bottom:12px}
-.p-controls{display:flex;gap:10px}
+.p-controls{display:flex;gap:10px;min-width:0}
 .btn-ctrl{flex:1;padding:14px;background:var(--g-sheen);border:1px solid var(--line);color:var(--text);font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px}
 .cicon{width:15px;height:15px;fill:currentColor;flex:none}
 .cicon[hidden]{display:none}
@@ -267,12 +267,12 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 }
 /* ---------- 训练音乐（fit-v21） ---------- */
 .p-controls{flex-wrap:wrap}
-#mbar{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:4px}
+#mbar{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:4px;min-width:0;max-width:100%}
 #mbar[hidden]{display:none}
 #mbar button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
 #mbar button:active{transform:scale(.92)}
-#mbar-title{flex:1;min-width:0;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-align:left}
-#mbar-title .mt-in{display:inline-block;white-space:nowrap}
+#mbar-title{flex:1 1 0;min-width:0;max-width:60%;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-align:left}
+#mbar-title .mt-in{display:inline-block;white-space:nowrap;width:max-content}
 #mbar-title.run .mt-in{animation:mtscroll var(--mt-dur,8s) linear infinite alternate}
 @keyframes mtscroll{from{transform:translateX(0)}to{transform:translateX(var(--mt-dist,-40px))}}
 #mmsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
@@ -1359,6 +1359,6 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script src="demo.js?v=3"></script>
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
-<script src="music.js?v=7"></script>
+<script src="music.js?v=11"></script>
 </body>
 </html>

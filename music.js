@@ -51,7 +51,7 @@
 
   /* ---------- 状态 ---------- */
   var tracks = [], cur = -1, playing = false, workoutMode = false, previewMode = false, errStreak = 0;
-  var mu = null, objUrl = null, msBound = false;
+  var mu = null, objUrl = null, msBound = false, loadGen = 0;
   var vol = parseFloat(localStorage.getItem('fit_music_vol'));
   if (isNaN(vol)) vol = 0.8;
   vol = Math.max(0, Math.min(1, vol));
@@ -81,9 +81,13 @@
     el.src = objUrl;
     try { el.load(); } catch (e) {}
     if (autoplay) {
-      var p = null;
+      var gen = ++loadGen, p = null;
       try { p = el.play(); } catch (e) {}
-      if (p && p.catch) p.catch(function () { playing = false; syncAll(); });
+      if (p && p.catch) p.catch(function () {
+        if (gen !== loadGen) return; /* 已切到别的曲子，忽略旧请求 */
+        playing = false; syncAll();
+        if (el.error) onError();
+      });
     }
     syncAll(); msMeta(t.name);
   }
@@ -101,16 +105,19 @@
     loadTrack(i, true);
   }
   function onError() {
+    if (!tracks.length) return;
+    if (mu && mu.error && mu.error.code === 1) return; /* 切歌导致的中止不算错 */
     errStreak++;
     var t = tracks[cur];
-    var lab = mid('mbar-title');
-    if (lab && t) lab.textContent = '⚠️ 无法播放：' + t.name;
     if (errStreak >= Math.max(1, tracks.length)) {
       errStreak = 0;
       if (mu) { try { mu.pause(); } catch (e) {} }
       playing = false; syncAll();
+      /* pause 事件异步触发的 syncAll 会覆写标题，警告延后写 */
+      setTimeout(function () { setTitle(t ? ('⚠️ 无法播放：' + t.name) : '⚠️ 音乐无法播放'); }, 120);
       return;
     }
+    setTitle('⚠️ 跳过：' + (t ? t.name : '?'));
     playNext();
   }
 
@@ -183,23 +190,46 @@
   }
 
   /* ---------- 顶部/训练页音乐条 ---------- */
+  function setTitle(s) {
+    var lab = mid('mbar-title'); if (!lab) return null;
+    var inn = lab.querySelector('.mt-in');
+    if (!inn) { lab.innerHTML = ''; inn = document.createElement('span'); inn.className = 'mt-in'; lab.appendChild(inn); }
+    var n = lab.firstChild;
+    while (n) { var nx = n.nextSibling; if (n !== inn) lab.removeChild(n); n = nx; }
+    inn.textContent = s;
+    return inn;
+  }
   function syncAll() {
     var bar = mid('mbar');
     var t = tracks[cur];
     var lab = mid('mbar-title');
     if (lab) {
-      var inn = lab.firstChild;
-      if (!inn || inn.nodeType !== 1) { inn = document.createElement('span'); inn.className = 'mt-in'; lab.appendChild(inn); }
-      inn.textContent = t ? (t.name + ' · ' + (cur + 1) + '/' + tracks.length) : '—';
+      var inn = setTitle(t ? (t.name + ' · ' + (cur + 1) + '/' + tracks.length) : '—');
       var bar2 = mid('mbar');
-      if (bar2 && !bar2.hidden) requestAnimationFrame(function () {
-        var over = inn.scrollWidth - lab.clientWidth;
+      if (inn && bar2 && !bar2.hidden) setTimeout(function () {
+        var tw = 0;
+        try {
+          /* span 盒子被容器钳制、Range/Canvas 在部分内核全不可信：
+             用绝对定位游离节点量真实 DOM 布局宽度（left:-9999px 解除钳制） */
+          var meas = setTitle._meas;
+          if (!meas) {
+            meas = document.createElement('div');
+            meas.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden;white-space:nowrap;display:inline-block;padding:0;margin:0;border:0;';
+            document.body.appendChild(meas);
+            setTitle._meas = meas;
+          }
+          var cl = getComputedStyle(lab);
+          meas.style.font = (cl.fontWeight || '400') + ' ' + cl.fontSize + ' ' + cl.fontFamily;
+          meas.textContent = inn.textContent;
+          tw = meas.offsetWidth;
+        } catch (e) { tw = inn.scrollWidth; }
+        var over = tw - lab.clientWidth;
         if (over > 6) {
           lab.classList.add('run');
           inn.style.setProperty('--mt-dist', '-' + (over + 8) + 'px');
           inn.style.setProperty('--mt-dur', Math.max(5, Math.min(14, over / 15)) + 's');
         } else lab.classList.remove('run');
-      });
+      }, 50);
     }
     var on = mid('ic-mplay'), off = mid('ic-mpause');
     /* SVGElement 无 hidden IDL 属性，.hidden= 只是 expando 不落属性，必须 setAttribute */
