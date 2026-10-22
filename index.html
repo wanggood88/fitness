@@ -211,6 +211,9 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .rd-ex{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:8px}
 .rd-ex .n{font-size:14px;font-weight:700;min-width:0;overflow-wrap:anywhere}
 .rd-ex .m{font-size:12px;color:var(--dim);flex:none}
+.rd-steps{display:none;font-size:13px;color:var(--dim);line-height:1.8;margin-top:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.rd-steps.show{display:block}
+.rd-steps b{color:var(--text)}
 #bmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
 #bmodal.show{display:flex}
 #b-text{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:12px;font-family:ui-monospace,Menlo,monospace;outline:none;resize:none;line-height:1.5}
@@ -517,6 +520,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <h2>📖 训练详情</h2>
     <div id="rd-body"></div>
     <span class="f-label" id="rd-hint"></span>
+    <div class="rd-steps" id="rd-steps"></div>
     <div class="f-err" id="rd-err" style="min-height:0"></div>
     <div class="sheet-btns">
       <button class="btn btn-ctrl" id="rd-close">关闭</button>
@@ -1341,20 +1345,32 @@ function openRecDetail(r){
   }
   var ios=isIOS();
   $('#rd-health').hidden=!ios;
-  $('#rd-hint').textContent=ios
-    ?('写入 Apple「健康」的体能训练（功能性力量训练）· 首次使用请先按聊天里的说明创建快捷指令「'+HS_SHORTCUT+'」')
-    :'「写入健康」目前支持 iPhone / iPad（通过快捷指令），Android 端暂不支持。';
+  if(ios){
+    $('#rd-hint').textContent='❤️ 首次使用需先创建快捷指令「FitLog」（只需一次，之后点按钮即全自动写入）· 点此展开创建步骤';
+    $('#rd-steps').innerHTML='<b>创建快捷指令「FitLog」步骤：</b><br>'+
+      '1️⃣ 打开「快捷指令」App → 右上角 ＋ 新建 → 点顶部名称改为 <b>FitLog</b><br>'+
+      '2️⃣ 添加操作「<b>从输入获取词典</b>」<br>'+
+      '3️⃣ 添加「<b>获取词典值</b>」：词典=上一步结果，键填 <b>min</b><br>'+
+      '4️⃣ 再添加「<b>获取词典值</b>」：<b>词典必须手动改选「词典」</b>（别用默认），键填 <b>start</b><br>'+
+      '5️⃣ 添加「<b>记录体能训练</b>」：类型选 <b>功能性力量训练</b>；时长选变量 <b>min</b>（单位选分钟）；开始时间/日期选变量 <b>start</b>（找不到选项就点「显示更多」；若日期类型报错，在此步前加一步「从文本获取日期」处理 start）<br>'+
+      '6️⃣（可选）添加「显示通知」：文本如 已写入健康 ✓<br>'+
+      '完成后回来点「❤️ 写入 Apple 健康」测试，再到「健康」App 查看。';
+  }else{
+    $('#rd-hint').textContent='「写入健康」目前支持 iPhone / iPad（通过快捷指令），Android 端暂不支持。';
+    $('#rd-steps').innerHTML='';
+  }
   $('#rd-err').textContent='';$('#rd-err').style.color='';
   $('#rsheet').classList.add('show');
 }
 $('#rd-close').onclick=function(){$('#rsheet').classList.remove('show');};
+$('#rd-hint').onclick=function(){if(isIOS())$('#rd-steps').classList.toggle('show');};
 $('#rsheet').addEventListener('click',function(ev){if(ev.target===this)$('#rsheet').classList.remove('show');});
 $('#rd-health').onclick=function(){
   if(!curRec)return;
   var a=document.createElement('a');a.href=healthURL(curRec);
   document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},400);
   var er=$('#rd-err');er.style.color='var(--lime)';
-  er.textContent='已唤起快捷指令「'+HS_SHORTCUT+'」，请在弹出的快捷指令里确认写入 ✓';
+  er.textContent='已唤起快捷指令「'+HS_SHORTCUT+'」。若提示「未找到快捷指令」，点上方提示展开创建步骤。';
 };
 $('#rd-copy').onclick=function(){
   if(!curRec)return;
