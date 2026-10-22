@@ -620,6 +620,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div class="sheet-btns">
       <button class="btn btn-ctrl" id="rd-close">关闭</button>
       <button class="btn btn-ctrl" id="rd-copy">📋 复制</button>
+      <button class="btn btn-primary" id="rd-install" hidden>📲 装快捷指令</button>
       <button class="btn btn-primary" id="rd-health" hidden style="flex:1.6">❤️ 写入 Apple 健康</button>
     </div>
   </div>
@@ -1411,11 +1412,34 @@ function fmtDT(t){var d=new Date(t);return d.getFullYear()+'-'+p2(d.getMonth()+1
 function isIOS(){var ua=navigator.userAgent||'';
   if(/android/i.test(ua))return false;
   return /iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+/* 把训练名称映射到 Apple「记录体能训练」支持的类型（英文标识） */
+function workoutTypeOf(r){
+  var n=((r.names&&r.names.join(' '))||'').toLowerCase();
+  if(/跑|run|jog|晨跑|夜跑/.test(n)) return 'Running';
+  if(/骑|自行|cycle|bike|单车/.test(n)) return 'Cycling';
+  if(/游|swim/.test(n)) return 'Swimming';
+  if(/瑜伽|yoga/.test(n)) return 'Yoga';
+  if(/走|walk|健走|徒步/.test(n)) return 'Walking';
+  if(/椭圆|elliptical/.test(n)) return 'Elliptical';
+  if(/划船|row/.test(n)) return 'Rowing';
+  if(/登山|hik|climb|爬楼| stair/.test(n)) return 'Hiking';
+  if(/操|hiit|aerob|有氧|跳舞|dance/.test(n)) return 'Mixed Cardio';
+  return 'Functional Strength Training';
+}
 function healthJSON(r){
   var st=new Date(r.t-(r.secs||0)*1000);
-  return {name:'健身训练',min:Math.max(1,Math.round((r.secs||0)/6)/10),
-    start:st.getFullYear()+'-'+p2(st.getMonth()+1)+'-'+p2(st.getDate())+'T'+p2(st.getHours())+':'+p2(st.getMinutes())+':'+p2(st.getSeconds()),
-    sets:r.sets||0,dur:fmt(r.secs||0)};
+  var notes=[];
+  if(r.hr) notes.push('平均心率 '+r.hr+(r.hrMax?(' / 最高 '+r.hrMax):'')+' bpm');
+  if(r.sets) notes.push('完成 '+r.sets+' 组');
+  return {
+    name:(r.names&&r.names[0])||'健身训练',
+    type:workoutTypeOf(r),
+    min:Math.max(1,Math.round((r.secs||0)/60)),
+    start:st.getFullYear()+'-'+p2(st.getMonth()+1)+'-'+p2(st.getDate())+' '+p2(st.getHours())+':'+p2(st.getMinutes()),
+    kcal:r.kcal||0,
+    dist:r.dist||0,
+    notes:notes.join(' · ')
+  };
 }
 function healthURL(r){return 'shortcuts://run-shortcut?name='+encodeURIComponent(HS_SHORTCUT)+'&input='+encodeURIComponent(JSON.stringify(healthJSON(r)));}
 function openRecDetail(r){
@@ -1445,21 +1469,21 @@ function openRecDetail(r){
   }
   var ios=isIOS();
   $('#rd-health').hidden=!ios;
+  $('#rd-install').hidden=!ios;
   if(ios){
-    $('#rd-hint').textContent='❤️ 首次使用需先创建快捷指令「FitLog」（只需一次，之后点按钮即全自动写入）· 点此展开创建步骤';
-    $('#rd-steps').innerHTML='<b>创建快捷指令「FitLog」（只需一次）：</b><br>'+
-      '1️⃣ 新建 → 点顶部名称改为 <b>FitLog</b><br>'+
-      '2️⃣ 搜「<b>字典</b>」添加「<b>从输入获取字典</b>」<br>'+
-      '　（旧系统叫"词典"；如果你的系统只有「从输入获取字典<b>值</b>」，跳过这步，第 4️⃣ 步直接用它）<br>'+
-      '3️⃣ 添加两个取值操作（名字随系统：<b>获取字典值</b> / <b>获取词典值</b>）：<br>'+
-      '　· 第一个：键填 <b>min</b><br>'+
-      '　· 第二个：键填 <b>start</b>，且<b>来源必须手动改选「字典」</b>（别用默认）<br>'+
-      '　· 若用的是「从输入获取字典值」：加两个，键路径分别 <b>min</b> / <b>start</b>，来源选「快捷指令输入」<br>'+
-      '4️⃣ 搜「<b>记录体能训练</b>」（找不到就搜"锻炼/体能训练/Log Workout"）：类型 <b>功能性力量训练</b>；时长=变量 <b>min</b>（单位选分钟）；开始时间=变量 <b>start</b>（没有该选项点「显示更多」；日期类型报错就在这步前加「从文本获取日期」处理 start）<br>'+
-      '5️⃣（可选）添加「显示通知」：文本如 已写入健康 ✓<br>'+
-      '哪一步搜不到？把动作搜索列表截图发我，我给你等效做法。';
+    $('#rd-hint').textContent='❤️ 首次只需装一次快捷指令「FitLog」，之后点「写入 Apple 健康」即自动写入 · 点此展开说明';
+    $('#rd-steps').innerHTML=
+      '<b>方式一（推荐，零拼接）：</b><br>'+
+      '1️⃣ 点下方「📲 一键安装快捷指令 FitLog」，在快捷指令 App 里点「添加快捷指令」<br>'+
+      '2️⃣ 若提示"无法验证快捷指令"：去 <b>设置 → 快捷指令 → 开启「允许不受信任的快捷指令」</b>，再重试添加<br>'+
+      '3️⃣ 添加后，回到这里点「写入 Apple 健康」即可把本训练写进健康 App<br><br>'+
+      '<b>方式二（手动建，若上面装不上）：</b><br>'+
+      '1️⃣ 快捷指令 → ＋ → 搜「<b>从输入获取字典</b>」添加（输入默认就是本 App 传来的数据）<br>'+
+      '2️⃣ 搜「<b>记录体能训练</b>」添加：类型选 <b>功能性力量训练</b>；时长 → 变量 → 选字典里的 <b>min</b>（分钟）；开始 → 显示更多 → 开始时间 → 变量 → 字典里的 <b>start</b>；能量 → 变量 → <b>kcal</b>（可选）；距离 → 变量 → <b>dist</b>（可选）<br>'+
+      '3️⃣ 点顶部名称改为 <b>FitLog</b> 保存<br>'+
+      '本 App 会传这些数据：类型 / 开始时间 / 时长(分钟) / 卡路里 / 距离。心率无法由快捷指令写入，会显示在通知里。';
   }else{
-    $('#rd-hint').textContent='「写入健康」目前支持 iPhone / iPad（通过快捷指令），Android 端暂不支持。';
+    $('#rd-hint').textContent='「写入健康」目前仅支持 iPhone / iPad（通过快捷指令），Android 端暂不支持。';
     $('#rd-steps').innerHTML='';
   }
   $('#rd-err').textContent='';$('#rd-err').style.color='';
@@ -1473,7 +1497,17 @@ $('#rd-health').onclick=function(){
   var a=document.createElement('a');a.href=healthURL(curRec);
   document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},400);
   var er=$('#rd-err');er.style.color='var(--lime)';
-  er.textContent='已唤起快捷指令「'+HS_SHORTCUT+'」。若提示「未找到快捷指令」，点上方提示展开创建步骤。';
+  er.textContent='已唤起快捷指令「'+HS_SHORTCUT+'」。若提示「未找到快捷指令」，先点「装快捷指令」安装。';
+};
+$('#rd-install').onclick=function(){
+  var er=$('#rd-err');er.style.color='var(--lime)';
+  er.textContent='正在打开快捷指令… 在快捷指令 App 里点「添加快捷指令」即可（若提示不受信任，请先在 设置→快捷指令 开启「允许不受信任的快捷指令」）。';
+  var u='https://wanggood88.github.io/fitness/FitLog.shortcut';
+  if(navigator.userAgent&&/iPhone|iPad|iPod/i.test(navigator.userAgent)){
+    location.href=u;
+  }else{
+    window.open(u,'_blank');
+  }
 };
 $('#rd-copy').onclick=function(){
   if(!curRec)return;
