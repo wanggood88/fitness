@@ -499,33 +499,35 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 <div id="hmodal">
   <div class="sheet">
     <h2>❤️ 导入 Apple 健康</h2>
-    <span class="f-label">把「健康」里的训练（时长 / 心率 / 消耗 / 距离）导进来，会与本应用的训练记录按时间自动合并；健康里有、应用里没有的训练会新增成记录。</span>
+    <span class="f-label">把「健康」里的训练（时长 / 心率 / 消耗 / 距离）导进来，会自动与训练记录按时间合并；健康里有、应用里没有的训练会新增成记录。</span>
+
+    <button class="btn btn-primary" id="hi-choose" style="width:100%;margin-top:14px">📂 选择「健康」导出文件（.zip / .xml）</button>
     <input type="file" id="hi-file" accept=".zip,.xml,application/zip,application/xml,text/xml" hidden>
-    <button class="btn btn-primary" id="hi-clip" style="margin-top:14px">📋 一键导入（读剪贴板）</button>
-    <button class="btn btn-ctrl" id="hi-choose" style="width:100%;margin-top:8px">📂 选择「健康」导出文件（.zip / .xml）</button>
-    <div class="hi-tip">一键导入需要先用快捷指令把数据放进剪贴板（设置一次，见下）。<br>没有快捷指令就用导出文件：<b>健康 App → 右上角头像 → 导出所有健康数据</b>，把「导出.zip」选进来。</div>
+    <div class="hi-tip">
+      <b>不用快捷指令，直接导入（推荐）：</b><br>
+      ① 健康 App → 右上角头像 → 最底下「导出所有健康数据」→ 确认 → 等几分钟（数据多年会慢）<br>
+      ② 选「存储到文件」，保存到「文件」App<br>
+      ③ 回到这里点上方按钮，选那个 <code>导出.zip</code> 即可
+    </div>
+
+    <button class="btn btn-ctrl" id="hi-clip" style="width:100%;margin-top:10px">📋 一键导入（读剪贴板）</button>
+    <div class="hi-tip">需先用快捷指令把数据放进剪贴板（设置一次，见下）。在主屏应用里也能用，因为剪贴板是系统级共享的。</div>
 
     <details class="hi-more">
-      <summary>① 设置「健康同步」快捷指令（只需一次） ▾</summary>
+      <summary>📖 不会建快捷指令？看一步一步图文 ▾</summary>
       <div class="hi-more-body">
+        <p style="margin:0 0 4px"><b>目标</b>：建一个「健康同步」快捷指令，练完把它生成的文本放进剪贴板，再回本应用点「一键导入」。</p>
         <ol>
-          <li>快捷指令 App → 右上角 <b>＋</b> 新建</li>
-          <li>加「<b>获取健康样本</b>」：类型 <b>体能训练</b>，排序 <b>开始日期</b>，顺序 <b>最新在前</b>，限制 <b>1</b></li>
-          <li>加「<b>获取详细信息</b>」：勾选 <b>开始日期</b>、<b>结束日期</b>、<b>活动能量</b>（有「总距离」也可以勾上）</li>
-          <li>加「<b>文本</b>」：先点下面的按钮复制模板粘进去，再把 <code>开始日期</code> 等换成上一步的变量</li>
-          <li>加「<b>拷贝到剪贴板</b>」，把这段文本放进去</li>
-          <li>命名为「健康同步」保存</li>
+          <li>打开「快捷指令」App → 右上角 <b>＋</b> → 新建空白快捷指令。</li>
+          <li>加「<b>查找所有健康样本</b>」（也叫「获取健康样本」）：类型选 <b>体能训练</b>，过滤「开始日期 是 今天」，排序 <b>最新在前</b>，限制 <b>1</b>。</li>
+          <li>加「<b>获取详细信息</b>」（来自上一步的体能训练）：勾 <b>开始日期</b>、<b>结束日期</b>、<b>时长</b>、<b>活动能量</b>、<b>总距离</b>（有就勾）。</li>
+          <li>加「<b>文本</b>」：先点下面「复制 JSON 模板」粘进去，再点文本框里的 <b>变量</b> 按钮，把模板里的 <code>开始日期</code> 等占位换成第 3 步的「详细信息」输出。</li>
+          <li>加「<b>拷贝到剪贴板</b>」，把文本放进去。命名「健康同步」保存。</li>
         </ol>
-        <span style="display:block;margin:2px 0 8px">想要心率：在第 4 步之前加「<b>获取健康样本</b>」（类型 <b>心率</b>，开始/结束日期填第 3 步的两个日期），再加「<b>计算统计信息</b>」选 <b>平均值</b>，把结果填到模板的 <code>hr</code>。</span>
+        <p style="margin:4px 0 2px">想要心率：在第 3 步前再加「查找所有健康样本（类型 心率，开始/结束用上面两个日期）」+「计算统计信息（平均值）」，把结果填到模板的 <code>hr</code>。</p>
+        <p style="margin:4px 0 2px"><b>全自动（可选）</b>：快捷指令 → 自动化 → 体能训练 → 结束时 → 运行「健康同步」→ 关「运行前询问」。练完自动放剪贴板，你只需回应用点一下「一键导入」。</p>
         <button class="btn btn-ctrl" id="hi-copy-tpl" style="width:100%;margin:8px 0 2px">📋 复制 JSON 模板</button>
-      </div>
-    </details>
-
-    <details class="hi-more">
-      <summary>② 练完自动放进剪贴板（全自动准备） ▾</summary>
-      <div class="hi-more-body">
-        快捷指令 → <b>自动化</b> → 新建 → 触发条件选「<b>体能训练</b>」→ <b>结束时</b> → 运行「健康同步」 → 关掉「运行前询问」。<br>
-        之后每次练完，打开本应用点一下「一键导入」就行，不用再导出文件。
+        <span style="display:block;margin-top:6px;color:#fca5a5">⚠️ 别在快捷指令里用「打开 URL」：主屏应用和 Safari 存储隔离，那样数据会进 Safari，你在主屏应用里看不到。</span>
       </div>
     </details>
 
