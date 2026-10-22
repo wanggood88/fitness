@@ -37,20 +37,58 @@
     return o;
   }
 
-  // Apple 导出里的日期形如：2024-01-01 10:52:06 +0800
+  // 兼容：2024-01-01 10:52:06 +0800 / 2024-01-01T10:52:06+08:00 /
+  //       2026年10月22日 15:00 / 2026/10/22 15:00 / 毫秒或秒时间戳
+  function pad2(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
+
   function parseAppleDate(s) {
     if (!s) return 0;
     s = String(s).trim();
-    var m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})\s*([+-]\d{2}:?\d{2})?$/.exec(s);
-    if (!m) {
-      var t0 = Date.parse(s);
-      return isFinite(t0) ? t0 : 0;
+    if (!s) return 0;
+    if (/^\d{13}$/.test(s)) return +s;
+    if (/^\d{10}$/.test(s)) return +s * 1000;
+
+    var y = 0, mo = 1, d = 1, h = 0, mi = 0, se = 0, tz = '', m;
+
+    m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?\s*([+-]\d{2}:?\d{2}|Z)?$/.exec(s);
+    if (m) {
+      y = +m[1]; mo = +m[2]; d = +m[3];
+      h = +(m[4] || 0); mi = +(m[5] || 0); se = +(m[6] || 0);
+      tz = m[7] || '';
     }
-    var tz = m[7] ? m[7].replace(/^([+-]\d{2})(\d{2})$/, '$1:$2') : '';
-    var iso = m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':' + m[6] + tz;
-    var t = Date.parse(iso);
-    if (!isFinite(t)) t = Date.parse(m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':' + m[6]);
-    return isFinite(t) ? t : 0;
+    if (!y) {
+      m = /^(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(上午|下午|AM|PM)?\s*(?:(\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
+      if (m) {
+        y = +m[1]; mo = +m[2]; d = +m[3];
+        h = +(m[5] || 0); mi = +(m[6] || 0); se = +(m[7] || 0);
+        if (m[4] && /下午|PM/i.test(m[4]) && h < 12) h += 12;
+        if (m[4] && /上午|AM/i.test(m[4]) && h === 12) h = 0;
+      }
+    }
+    if (y) {
+      if (tz === 'Z') return Date.parse(y + '-' + pad2(mo) + '-' + pad2(d) + 'T' + pad2(h) + ':' + pad2(mi) + ':' + pad2(se) + 'Z');
+      if (tz) {
+        var z = tz.replace(/^([+-]\d{2})(\d{2})$/, '$1:$2');
+        var tzr = Date.parse(y + '-' + pad2(mo) + '-' + pad2(d) + 'T' + pad2(h) + ':' + pad2(mi) + ':' + pad2(se) + z);
+        if (isFinite(tzr)) return tzr;
+      }
+      return new Date(y, mo - 1, d, h, mi, se).getTime();
+    }
+    var t2 = Date.parse(s);
+    return isFinite(t2) ? t2 : 0;
+  }
+
+  // 兼容「52分钟」「1小时20分」这类时长文本
+  function parseDurText(v) {
+    if (typeof v === 'number') return v;
+    var s = String(v == null ? '' : v);
+    var hh = /(\d+(?:\.\d+)?)\s*(?:小时|时|h)/i.exec(s);
+    var mm = /(\d+(?:\.\d+)?)\s*(?:分钟|分|min|m)(?![a-z])/i.exec(s);
+    var ss = /(\d+(?:\.\d+)?)\s*(?:秒|s)(?![a-z])/i.exec(s);
+    if (hh || mm || ss) {
+      return Math.round((hh ? +hh[1] * 3600 : 0) + (mm ? +mm[1] * 60 : 0) + (ss ? +ss[1] : 0));
+    }
+    return num(v);
   }
 
   function kcalOf(v, unit) {
@@ -287,8 +325,9 @@
       if (!it || typeof it !== 'object') return;
       var start = it.start ? parseAppleDate(it.start) : 0;
       var end = it.end ? parseAppleDate(it.end) : 0;
-      var dur = num(it.dur || it.duration || it.secs);
-      if (!dur && start && end) dur = Math.round((end - start) / 1000);
+      // 有开始/结束时间就以它为准（快捷指令里的「时长」常是「52分钟」这种文本）
+      var dur = (start && end && end > start) ? Math.round((end - start) / 1000)
+        : parseDurText(it.dur || it.duration || it.secs);
       if (!end && start && dur) end = start + dur * 1000;
       if (!start && end && dur) start = end - dur * 1000;
       if (!end) return;
@@ -303,6 +342,27 @@
       if (w) out.push(w);
     });
     return out;
+  }
+
+  // 从任意文本里解析：纯 JSON / 被文字包裹的 JSON / base64（快捷指令常这么传）
+  function parsePayload(text) {
+    if (!text) return [];
+    var t = String(text).trim();
+    if (!t) return [];
+    var cands = [t];
+    var i = t.indexOf('{'), j = t.lastIndexOf('}');
+    if (i >= 0 && j > i) cands.push(t.slice(i, j + 1));
+    var k = t.indexOf('['), l = t.lastIndexOf(']');
+    if (k >= 0 && l > k) cands.push(t.slice(k, l + 1));
+    var c;
+    for (c = 0; c < cands.length; c++) {
+      try { return normalizeExternal(JSON.parse(cands[c])); } catch (e) { }
+    }
+    try {
+      var raw = decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/'))));
+      return normalizeExternal(JSON.parse(raw));
+    } catch (e2) { }
+    return [];
   }
 
   /* ---------------- 合并到训练记录 ---------------- */
@@ -363,6 +423,8 @@
     parseAppleDate: parseAppleDate,
     readZipEntry: readZipEntry,
     normalizeExternal: normalizeExternal,
+    parsePayload: parsePayload,
+    parseDurText: parseDurText,
     mergeWorkouts: mergeWorkouts,
     activityTitle: activityTitle,
     activityMap: ACT
@@ -541,28 +603,89 @@
     if (typeof root.renderHistory === 'function') root.renderHistory();
     setTimeout(function () {
       closeSheet();
-      if (typeof root.toast === 'function') root.toast('已导入 Apple 健康数据 ✓');
-      else if (typeof root.showSaved === 'function') root.showSaved();
+      toast('已导入 Apple 健康数据 ✓');
     }, 900);
+  }
+
+  function toast(msg) {
+    var el = document.getElementById('saved-tip');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove('show'); }, 1900);
+  }
+
+  // 一键导入：读剪贴板 → 自动导入最近 24 小时的训练
+  function quickImport() {
+    if (!(navigator.clipboard && navigator.clipboard.readText)) {
+      openSheet({ reset: true, hint: '当前环境不支持读剪贴板，请改用「导出文件」导入。' });
+      return;
+    }
+    var p;
+    try { p = navigator.clipboard.readText(); } catch (e) { p = Promise.reject(e); }
+
+    p.then(function (txt) {
+      var list = parsePayload(txt);
+      if (!list.length) {
+        openSheet({ reset: true, hint: '剪贴板里没有健康数据。先运行一次「健康同步」快捷指令，再回来点这里。' });
+        return;
+      }
+      var cutoff = Date.now() - 24 * 3600 * 1000;
+      var recent = list.filter(function (w) { return w.end >= cutoff; });
+      if (!recent.length) {
+        openSheet({ reset: true });
+        parsed = list;
+        initSelection(false);
+        renderPreview();
+        setStatus('剪贴板里没有最近 24 小时的数据，请手动勾选要导入的训练', '');
+        return;
+      }
+      var sel = {};
+      recent.forEach(function (w) { sel[w.id] = 1; });
+      var res = mergeWorkouts(list, sel);
+      var main = recent.slice().sort(function (a, b) { return b.end - a.end; })[0];
+      var n = res.added + res.merged;
+      setStatus('已导入 ' + n + ' 条：' + (main.title || '训练') +
+        (main.dur ? ' · ' + fmt(main.dur) : '') +
+        (main.hr ? ' · 心率 ' + main.hr : '') +
+        (main.kcal ? ' · ' + main.kcal + ' kcal' : ''), 'ok');
+      toast('已导入 ' + n + ' 条健康数据 ✓');
+    }).catch(function (e) {
+      var msg = (e && e.message) || '';
+      openSheet({
+        reset: true,
+        hint: /denied|permission|not allowed/i.test(msg)
+          ? '系统拒绝了剪贴板访问：请在弹出的提示里选「允许粘贴」，或改用导出文件。'
+          : '读取剪贴板失败，请改用「导出文件」导入。'
+      });
+    });
   }
 
   function checkHash() {
     var h = location.hash || '';
     var m = /(?:^#|&)hi=([^&]+)/.exec(h);
     if (!m) return false;
+    var auto = /(?:^#|&)auto=1(?:&|$)/.test(h);
     var list = [];
-    try {
-      var raw = decodeURIComponent(m[1]);
-      // 兼容 base64（快捷指令里常用）
-      if (raw.charAt(0) !== '{' && raw.charAt(0) !== '[') {
-        try { raw = decodeURIComponent(escape(atob(raw.replace(/-/g, '+').replace(/_/g, '/')))); } catch (e) { }
-      }
-      list = normalizeExternal(JSON.parse(raw));
-    } catch (e) { list = []; }
+    try { list = parsePayload(decodeURIComponent(m[1])); } catch (e) { list = []; }
 
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e2) { }
 
     if (!list.length) return false;
+
+    if (auto) {
+      var cutoff = Date.now() - 24 * 3600 * 1000;
+      var recent = list.filter(function (w) { return w.end >= cutoff; });
+      var use = recent.length ? recent : list.slice(-1);
+      var sel = {};
+      use.forEach(function (w) { sel[w.id] = 1; });
+      var res = mergeWorkouts(list, sel);
+      var n = res.added + res.merged;
+      toast(n ? '已自动导入 ' + n + ' 条健康数据 ✓' : '健康数据已是最新 ✓');
+      return true;
+    }
+
     openSheet({ reset: true });
     parsed = list;
     initSelection(true);
@@ -594,8 +717,34 @@
     if (b1) b1.onclick = function () { openSheet({ reset: true }); };
 
     var b2 = $('#btn-hi-done');
-    if (b2) b2.onclick = function () {
-      openSheet({ reset: true, hint: '刚练完？直接选「健康」导出的 .zip，就会把心率 / 消耗合并到这次训练。' });
+    if (b2) b2.onclick = function () { quickImport(); };
+
+    var clip = $('#hi-clip');
+    if (clip) clip.onclick = function () { quickImport(); };
+
+    var pasteGo = $('#hi-paste-go');
+    if (pasteGo) pasteGo.onclick = function () {
+      var ta = $('#hi-paste');
+      var list = parsePayload(ta ? ta.value : '');
+      if (!list.length) { setStatus('这段文本里没有识别到健康数据', 'err'); return; }
+      parsed = list;
+      initSelection(false);
+      renderPreview();
+      setStatus('已识别 ' + list.length + ' 条训练，确认后点「导入选中」', 'ok');
+    };
+
+    var tpl = $('#hi-copy-tpl');
+    if (tpl) tpl.onclick = function () {
+      var t = '{"workouts":[{"title":"力量训练","start":"开始日期","end":"结束日期","kcal":312,"hr":132}]}';
+      function ok() { tpl.textContent = '已复制 ✓'; setTimeout(function () { tpl.textContent = '📋 复制 JSON 模板'; }, 1600); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t).then(ok, function () { });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = t; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); ok(); } catch (e) { }
+        ta.remove();
+      }
     };
   }
 
