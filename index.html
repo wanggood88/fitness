@@ -199,6 +199,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .hs-badge{font-size:11px;padding:2px 8px;border-radius:999px;flex-shrink:0}
 .hs-badge.ok{background:rgba(163,230,53,.12);color:var(--lime)}
 .hs-badge.part{background:rgba(251,191,36,.12);color:var(--gold)}
+.hs-badge.hi{background:rgba(56,189,248,.14);color:var(--sky)}
 .hs-meta{color:var(--dim);font-size:13px}
 .hs-names{color:var(--dim);font-size:12px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hs-empty{color:var(--dim);text-align:center;padding:26px 10px;font-size:14px}
@@ -401,6 +402,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <button class="btn btn-primary" id="btn-again">🔁 再来一次</button>
     <button class="btn btn-ghost" id="btn-back" style="margin-top:10px"><span>返回编辑</span></button>
     <button class="btn btn-ghost" id="btn-seehis" style="margin-top:0"><span>📊 查看训练记录</span></button>
+    <button class="btn btn-ghost" id="btn-hi-done" style="margin-top:10px"><span>❤️ 导入 Apple 健康数据</span></button>
   </section>
 
   <!-- 记录页 -->
@@ -421,7 +423,10 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <div class="chart" id="hs-chart"></div>
     <h2 class="sec">历史明细</h2>
     <div id="hs-list"></div>
-    <button class="btn btn-ghost" id="btn-h-clear" style="margin-top:16px"><span>清空记录</span></button>
+    <div class="hs-actions">
+      <button class="btn btn-ghost" id="btn-hi-import" style="margin:0"><span>❤️ 导入健康数据</span></button>
+      <button class="btn btn-ghost" id="btn-h-clear" style="margin:0"><span>清空记录</span></button>
+    </div>
   </section>
 </div>
 
@@ -490,6 +495,63 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <span class="f-label" id="b-diag" style="margin-top:12px"></span>
   </div>
 </div>
+<!-- Apple 健康导入 弹层 -->
+<div id="hmodal">
+  <div class="sheet">
+    <h2>❤️ 导入 Apple 健康</h2>
+    <span class="f-label">把「健康」里的训练（时长 / 心率 / 消耗 / 距离）导进来，会与本应用的训练记录按时间自动合并；健康里有、应用里没有的训练会新增成记录。</span>
+    <input type="file" id="hi-file" accept=".zip,.xml,application/zip,application/xml,text/xml" hidden>
+    <button class="btn btn-primary" id="hi-choose" style="margin-top:12px">📂 选择「健康」导出文件（.zip / .xml）</button>
+    <div class="hi-tip">iPhone：<b>健康 App → 右上角头像 → 导出所有健康数据</b>，会得到一个「导出.zip」，直接选它即可。</div>
+    <details class="hi-more">
+      <summary>进阶：训练后用快捷指令自动导入 ▾</summary>
+      <div class="hi-more-body">
+        <ol>
+          <li>快捷指令 App → 新建快捷指令 → 加「获取健康样本」：类型选<b>体能训练</b>，排序「开始日期」，限制 1 条。</li>
+          <li>加「获取详细信息」，取开始日期、结束日期、时长、活动能量、平均心率。</li>
+          <li>加「文本」，拼成：<code>{"workouts":[{"title":"力量训练","start":"开始日期","end":"结束日期","dur":秒,"kcal":活动能量,"hr":平均心率}]}</code></li>
+          <li>加「URL 编码」把文本编码，再「打开 URL」：<code>https://wanggood88.github.io/fitness/#hi=编码后的文本</code></li>
+          <li>想全自动：快捷指令 → 自动化 → 创建个人自动化 → <b>体能训练</b> → 结束时 → 运行上面的快捷指令。</li>
+        </ol>
+        注意：如果应用是「添加到主屏幕」的独立窗口，iOS 会把链接打开在 Safari 里（存储不互通）。这种情况请用上面的「导出文件」方式，或直接在 Safari 里使用本应用。
+      </div>
+    </details>
+    <div class="f-err" id="hi-status"></div>
+    <div class="hi-listwrap" id="hi-list"></div>
+    <div class="sheet-btns">
+      <button class="btn btn-ctrl" id="hi-close">关闭</button>
+      <button class="btn btn-primary" id="hi-import" style="flex:1.6" hidden>导入选中（0）</button>
+    </div>
+  </div>
+</div>
+<style>
+#hmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:55;backdrop-filter:blur(4px)}
+#hmodal.show{display:flex}
+#hmodal .sheet{max-height:90vh}
+#hmodal .sheet h2{margin-bottom:6px}
+.hi-tip{font-size:12px;color:var(--dim);line-height:1.7;margin:10px 0 4px}
+.hi-tip b{color:var(--text)}
+.hi-more{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:12px 0;background:var(--card2)}
+.hi-more summary{font-size:13px;color:var(--sky);cursor:pointer;list-style:none}
+.hi-more summary::-webkit-details-marker{display:none}
+.hi-more-body{font-size:12px;color:var(--dim);line-height:1.75;margin-top:8px}
+.hi-more-body ol{margin:4px 0 6px 16px;padding:0}
+.hi-more-body li{margin-bottom:4px}
+.hi-more-body code{background:#0d1117;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--lime);word-break:break-all;font-size:11px}
+.hi-listwrap{max-height:34vh;overflow-y:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
+.hi-bar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);padding:2px 2px 8px;gap:8px}
+.hi-links a{color:var(--sky);margin-left:12px;cursor:pointer}
+.hi-row{display:flex;gap:10px;align-items:flex-start;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.hi-row input{margin-top:3px;width:18px;height:18px;accent-color:#a3e635;flex:none}
+.hi-main{flex:1;min-width:0}
+.hi-t{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:var(--text)}
+.hi-t b{font-weight:700}
+.hi-d{font-size:11px;color:var(--dim);flex:none;align-self:center}
+.hi-m{font-size:12px;color:var(--dim);margin-top:3px;line-height:1.5}
+.hi-empty{font-size:13px;color:var(--dim);text-align:center;padding:18px 0}
+.hs-actions{display:flex;gap:10px;margin-top:16px}
+.hs-actions .btn{flex:1;width:auto}
+</style>
 <!-- 训练音乐 弹层 -->
 <div id="mmsheet">
   <div class="sheet">
@@ -1330,8 +1392,13 @@ function openRecDetail(r){
     d.innerHTML='<span class="k">'+k+'</span><span class="v">'+v+'</span>';body.appendChild(d);}
   row('🕐 结束时间',fmtDT(r.t));
   row('⏱ 总用时',fmt(r.secs||0));
-  row('🏋️ 完成组数',(r.sets||0)+' / '+(r.total||0)+' 组');
+  if(r.src==='health')row('🏷 训练类型',(r.names&&r.names[0])||'训练');
+  else row('🏋️ 完成组数',(r.sets||0)+' / '+(r.total||0)+' 组');
   row('状态',r.done?'✅ 完成':'⚠️ 中途结束');
+  if(r.hr)row('❤️ 平均心率',r.hr+' bpm'+(r.hrMax?'（最高 '+r.hrMax+'）':''));
+  if(r.kcal)row('🔥 活动消耗',r.kcal+' kcal');
+  if(r.dist)row('📍 距离',r.dist+' km');
+  if(r.src==='health')row('📥 数据来源','Apple 健康'+(r.hsrc?' · '+r.hsrc:''));
   if(r.exs&&r.exs.length){
     var h=document.createElement('div');h.className='f-label';h.style.marginTop='16px';h.textContent='动作明细';body.appendChild(h);
     r.exs.forEach(function(x){
@@ -1339,7 +1406,7 @@ function openRecDetail(r){
       d.innerHTML='<span class="n">'+esc(x.n)+'</span><span class="m">'+x.s+' 组 · '+(x.d>0?fmt(x.d):'自定节奏')+'</span>';
       body.appendChild(d);
     });
-  }else if(r.names&&r.names.length){
+  }else if(r.src!=='health'&&r.names&&r.names.length){
     var h2=document.createElement('div');h2.className='f-label';h2.style.marginTop='16px';h2.textContent='动作（旧记录，无分组明细）';body.appendChild(h2);
     var d2=document.createElement('div');d2.className='rd-ex';d2.innerHTML='<span class="n">'+esc(r.names.join('、'))+'</span>';body.appendChild(d2);
   }
@@ -1452,8 +1519,10 @@ function renderHistory(){
     var txt=(d.getMonth()+1)+'月'+d.getDate()+'日 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     var row=document.createElement('div');row.className='hs-row';
     row.innerHTML='<div class="hs-top"><span class="hs-date">'+txt+'</span>'+
-      '<span class="hs-badge '+(r.done?'ok">完成':'part">中途')+'</span><span class="hs-arr">›</span></div>'+
-      '<div class="hs-meta">'+r.sets+' / '+r.total+' 组 · '+fmt(r.secs)+'</div>'+
+      '<span class="hs-badge '+(r.src==='health'?'hi">健康':(r.done?'ok">完成':'part">中途'))+'</span><span class="hs-arr">›</span></div>'+
+      '<div class="hs-meta">'+(r.src==='health'
+        ? fmt(r.secs)+(r.hr?' · 平均 '+r.hr+' bpm':'')+(r.kcal?' · '+r.kcal+' kcal':'')+(r.dist?' · '+r.dist+' km':'')
+        : r.sets+' / '+r.total+' 组 · '+fmt(r.secs)+(r.hr?' · ❤️'+r.hr:''))+'</div>'+
       (r.names&&r.names.length?'<div class="hs-names">'+esc(r.names.join('、'))+'</div>':'');
     row.onclick=function(){openRecDetail(r);};
     list.appendChild(row);
@@ -1542,5 +1611,6 @@ if('serviceWorker' in navigator && location.protocol==='https:' && !window.Andro
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
 <script src="music.js?v=18"></script>
+<script src="health.js?v=1"></script>
 </body>
 </html>
