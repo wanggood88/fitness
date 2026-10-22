@@ -402,7 +402,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <button class="btn btn-primary" id="btn-again">🔁 再来一次</button>
     <button class="btn btn-ghost" id="btn-back" style="margin-top:10px"><span>返回编辑</span></button>
     <button class="btn btn-ghost" id="btn-seehis" style="margin-top:0"><span>📊 查看训练记录</span></button>
-    <button class="btn btn-ghost" id="btn-hi-done" style="margin-top:10px"><span>❤️ 导入 Apple 健康数据</span></button>
+    <button class="btn btn-ghost" id="btn-hi-done" style="margin-top:10px"><span>❤️ 一键导入健康数据</span></button>
   </section>
 
   <!-- 记录页 -->
@@ -501,19 +501,49 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <h2>❤️ 导入 Apple 健康</h2>
     <span class="f-label">把「健康」里的训练（时长 / 心率 / 消耗 / 距离）导进来，会与本应用的训练记录按时间自动合并；健康里有、应用里没有的训练会新增成记录。</span>
     <input type="file" id="hi-file" accept=".zip,.xml,application/zip,application/xml,text/xml" hidden>
-    <button class="btn btn-primary" id="hi-choose" style="margin-top:12px">📂 选择「健康」导出文件（.zip / .xml）</button>
-    <div class="hi-tip">iPhone：<b>健康 App → 右上角头像 → 导出所有健康数据</b>，会得到一个「导出.zip」，直接选它即可。</div>
+    <button class="btn btn-primary" id="hi-clip" style="margin-top:14px">📋 一键导入（读剪贴板）</button>
+    <button class="btn btn-ctrl" id="hi-choose" style="width:100%;margin-top:8px">📂 选择「健康」导出文件（.zip / .xml）</button>
+    <div class="hi-tip">一键导入需要先用快捷指令把数据放进剪贴板（设置一次，见下）。<br>没有快捷指令就用导出文件：<b>健康 App → 右上角头像 → 导出所有健康数据</b>，把「导出.zip」选进来。</div>
+
     <details class="hi-more">
-      <summary>进阶：训练后用快捷指令自动导入 ▾</summary>
+      <summary>① 设置「健康同步」快捷指令（只需一次） ▾</summary>
       <div class="hi-more-body">
         <ol>
-          <li>快捷指令 App → 新建快捷指令 → 加「获取健康样本」：类型选<b>体能训练</b>，排序「开始日期」，限制 1 条。</li>
-          <li>加「获取详细信息」，取开始日期、结束日期、时长、活动能量、平均心率。</li>
-          <li>加「文本」，拼成：<code>{"workouts":[{"title":"力量训练","start":"开始日期","end":"结束日期","dur":秒,"kcal":活动能量,"hr":平均心率}]}</code></li>
-          <li>加「URL 编码」把文本编码，再「打开 URL」：<code>https://wanggood88.github.io/fitness/#hi=编码后的文本</code></li>
-          <li>想全自动：快捷指令 → 自动化 → 创建个人自动化 → <b>体能训练</b> → 结束时 → 运行上面的快捷指令。</li>
+          <li>快捷指令 App → 右上角 <b>＋</b> 新建</li>
+          <li>加「<b>获取健康样本</b>」：类型 <b>体能训练</b>，排序 <b>开始日期</b>，顺序 <b>最新在前</b>，限制 <b>1</b></li>
+          <li>加「<b>获取详细信息</b>」：勾选 <b>开始日期</b>、<b>结束日期</b>、<b>活动能量</b>（有「总距离」也可以勾上）</li>
+          <li>加「<b>文本</b>」：先点下面的按钮复制模板粘进去，再把 <code>开始日期</code> 等换成上一步的变量</li>
+          <li>加「<b>拷贝到剪贴板</b>」，把这段文本放进去</li>
+          <li>命名为「健康同步」保存</li>
         </ol>
-        注意：如果应用是「添加到主屏幕」的独立窗口，iOS 会把链接打开在 Safari 里（存储不互通）。这种情况请用上面的「导出文件」方式，或直接在 Safari 里使用本应用。
+        <span style="display:block;margin:2px 0 8px">想要心率：在第 4 步之前加「<b>获取健康样本</b>」（类型 <b>心率</b>，开始/结束日期填第 3 步的两个日期），再加「<b>计算统计信息</b>」选 <b>平均值</b>，把结果填到模板的 <code>hr</code>。</span>
+        <button class="btn btn-ctrl" id="hi-copy-tpl" style="width:100%;margin:8px 0 2px">📋 复制 JSON 模板</button>
+      </div>
+    </details>
+
+    <details class="hi-more">
+      <summary>② 练完自动放进剪贴板（全自动准备） ▾</summary>
+      <div class="hi-more-body">
+        快捷指令 → <b>自动化</b> → 新建 → 触发条件选「<b>体能训练</b>」→ <b>结束时</b> → 运行「健康同步」 → 关掉「运行前询问」。<br>
+        之后每次练完，打开本应用点一下「一键导入」就行，不用再导出文件。
+      </div>
+    </details>
+
+    <details class="hi-more">
+      <summary>③ 完全零点击（仅 Safari 标签页，主屏应用不生效） ▾</summary>
+      <div class="hi-more-body">
+        把上面第 5 步换成「<b>URL 编码</b>」+「<b>打开 URL</b>」：<br>
+        <code>https://wanggood88.github.io/fitness/#hi=编码后的文本&amp;auto=1</code><br>
+        这样练完会自动打开页面并直接导入，无需点按。<br>
+        <b>注意</b>：iPhone 主屏应用的存储与 Safari 完全隔离，这种方式只在 Safari 标签页里生效；装在主屏的话请用「一键导入」。
+      </div>
+    </details>
+
+    <details class="hi-more">
+      <summary>心率不够准？手动粘贴 JSON ▾</summary>
+      <div class="hi-more-body">
+        <textarea id="hi-paste" rows="3" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder='{"workouts":[{"title":"力量训练","start":"2026-10-22 15:00:00","end":"2026-10-22 15:40:00","kcal":260,"hr":128}]}'></textarea>
+        <button class="btn btn-ctrl" id="hi-paste-go" style="width:100%;margin-top:8px">导入这段 JSON</button>
       </div>
     </details>
     <div class="f-err" id="hi-status"></div>
@@ -538,6 +568,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .hi-more-body ol{margin:4px 0 6px 16px;padding:0}
 .hi-more-body li{margin-bottom:4px}
 .hi-more-body code{background:#0d1117;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--lime);word-break:break-all;font-size:11px}
+#hi-paste{width:100%;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;padding:10px;resize:vertical}
 .hi-listwrap{max-height:34vh;overflow-y:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
 .hi-bar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);padding:2px 2px 8px;gap:8px}
 .hi-links a{color:var(--sky);margin-left:12px;cursor:pointer}
@@ -1611,6 +1642,6 @@ if('serviceWorker' in navigator && location.protocol==='https:' && !window.Andro
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
 <script src="music.js?v=18"></script>
-<script src="health.js?v=1"></script>
+<script src="health.js?v=2"></script>
 </body>
 </html>
