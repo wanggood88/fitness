@@ -262,12 +262,21 @@
     return out;
   }
 
-  /* ---------------- 最小 ZIP 读取（只取 export.xml） ---------------- */
+  /* ---------------- 最小 ZIP 读取（定位健康导出的主 xml） ----------------
+     中文系统的 iOS 导出里主文件叫「导出.xml」，英文系统叫 export.xml；
+     还有些版本目录名也不同。这里扫描全部条目，按优先级选：
+     1) 以 export.xml / 导出.xml 结尾  2) 其余 .xml 里压缩体积最大的那个 */
   function u16(dv, o) { return dv.getUint16(o, true); }
   function u32(dv, o) { return dv.getUint32(o, true); }
 
-  function readZipEntry(file, suffix) {
-    suffix = suffix || 'export.xml';
+  function pickEntryName(name) {
+    var n = name.toLowerCase();
+    if (/(^|\/)(export|导出)\.xml$/.test(n)) return 2;
+    if (/\.xml$/.test(n) && !/(^|\/)导出说明\.pdf$/i.test(name)) return 1;
+    return 0;
+  }
+
+  function readZipEntry(file) {
     var size = file.size;
     var tailLen = Math.min(size, 65557);
     return file.slice(size - tailLen).arrayBuffer().then(function (tb) {
@@ -279,10 +288,11 @@
       var count = u16(dv, eocd + 10);
       var cdSize = u32(dv, eocd + 12);
       var cdOff = u32(dv, eocd + 16);
-      if (cdOff === 0xffffffff || count === 0xffff) throw new Error('暂不支持 ZIP64，请解压后选择 export.xml');
+      if (cdOff === 0xffffffff || count === 0xffff) throw new Error('暂不支持 ZIP64，请先在「文件」App 里解压，再选择里面的 xml 文件');
 
       return file.slice(cdOff, cdOff + cdSize).arrayBuffer().then(function (cb) {
         var cd = new DataView(cb), p = 0, n;
+        var best = null; // {name, lho, compSize, method, score}
         for (n = 0; n < count; n++) {
           if (cd.getUint32(p, true) !== 0x02014b50) break;
           var method = u16(cd, p + 10);
@@ -292,23 +302,25 @@
           var commLen = u16(cd, p + 32);
           var lho = u32(cd, p + 42);
           var name = new TextDecoder('utf-8').decode(new Uint8Array(cb, p + 46, nameLen));
-          if (name.toLowerCase().slice(-suffix.length) === suffix.toLowerCase()) {
-            return file.slice(lho, lho + 30).arrayBuffer().then(function (lb) {
-              var lh = new DataView(lb);
-              if (lh.getUint32(0, true) !== 0x04034b50) throw new Error('zip 文件头损坏');
-              var start = lho + 30 + u16(lh, 26) + u16(lh, 28);
-              var data = file.slice(start, start + compSize);
-              if (method === 0) return data;
-              if (method !== 8) throw new Error('不支持的压缩方式');
-              if (typeof DecompressionStream === 'undefined') {
-                throw new Error('当前浏览器不支持直接解压，请先在「文件」里解压，再选择 export.xml');
-              }
-              return new Response(data.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
-            });
+          var score = pickEntryName(name);
+          if (score > 0 && (!best || score > best.score || (score === best.score && compSize > best.compSize))) {
+            best = { name: name, lho: lho, compSize: compSize, method: method, score: score };
           }
           p += 46 + nameLen + extraLen + commLen;
         }
-        throw new Error('zip 里没有找到 export.xml');
+        if (!best) throw new Error('zip 里没有找到健康导出的 xml 数据文件');
+        return file.slice(best.lho, best.lho + 30).arrayBuffer().then(function (lb) {
+          var lh = new DataView(lb);
+          if (lh.getUint32(0, true) !== 0x04034b50) throw new Error('zip 文件头损坏');
+          var start = best.lho + 30 + u16(lh, 26) + u16(lh, 28);
+          var data = file.slice(start, start + best.compSize);
+          if (best.method === 0) return data;
+          if (best.method !== 8) throw new Error('不支持的压缩方式');
+          if (typeof DecompressionStream === 'undefined') {
+            throw new Error('当前浏览器不支持直接解压，请先在「文件」App 里解压，再选择里面的 xml 文件');
+          }
+          return new Response(data.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+        });
       });
     });
   }
@@ -571,7 +583,7 @@
     $('#hi-import').hidden = true;
 
     var p = /\.zip$/i.test(file.name)
-      ? readZipEntry(file, 'export.xml').then(function (blob) { return parseXmlBlob(blob, progress); })
+      ? readZipEntry(file).then(function (blob) { return parseXmlBlob(blob, progress); })
       : parseXmlBlob(file, progress);
 
     function progress(n) { setStatus('已读取 ' + n + ' 条训练…', ''); }
