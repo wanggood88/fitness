@@ -191,7 +191,9 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .bar{width:58%;max-width:26px;background:var(--card2);border-radius:6px 6px 2px 2px}
 .bar.on{background:linear-gradient(180deg,var(--lime),#22d3a5)}
 .bar-label{font-size:11px;color:var(--dim)}
-.hs-row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.hs-row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer}
+.hs-row:active{border-color:var(--lime)}
+.hs-arr{color:var(--dim);font-size:15px;flex:none;margin-left:8px}
 .hs-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 .hs-date{font-weight:700;font-size:15px}
 .hs-badge{font-size:11px;padding:2px 8px;border-radius:999px;flex-shrink:0}
@@ -200,6 +202,15 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .hs-meta{color:var(--dim);font-size:13px}
 .hs-names{color:var(--dim);font-size:12px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hs-empty{color:var(--dim);text-align:center;padding:26px 10px;font-size:14px}
+/* 记录详情弹层 */
+#rsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
+#rsheet.show{display:flex}
+.rd-row{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-top:10px}
+.rd-row .k{font-size:13px;color:var(--dim);flex:none}
+.rd-row .v{font-size:14px;font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+.rd-ex{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:8px}
+.rd-ex .n{font-size:14px;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.rd-ex .m{font-size:12px;color:var(--dim);flex:none}
 #bmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
 #bmodal.show{display:flex}
 #b-text{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:12px;font-family:ui-monospace,Menlo,monospace;outline:none;resize:none;line-height:1.5}
@@ -498,6 +509,20 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <span class="f-label">说明：音频只存本机（IndexedDB），不随配置备份导出；iPhone 上音量跟随系统音量。</span>
     <div class="f-err" id="mm-err"></div>
     <div class="sheet-btns"><button class="btn btn-primary" id="mm-close">完成</button></div>
+  </div>
+</div>
+<!-- 记录详情 弹层 -->
+<div id="rsheet">
+  <div class="sheet">
+    <h2>📖 训练详情</h2>
+    <div id="rd-body"></div>
+    <span class="f-label" id="rd-hint"></span>
+    <div class="f-err" id="rd-err" style="min-height:0"></div>
+    <div class="sheet-btns">
+      <button class="btn btn-ctrl" id="rd-close">关闭</button>
+      <button class="btn btn-ctrl" id="rd-copy">📋 复制</button>
+      <button class="btn btn-primary" id="rd-health" hidden style="flex:1.6">❤️ 写入 Apple 健康</button>
+    </div>
   </div>
 </div>
 <div id="saved-tip">已保存 ✓</div>
@@ -1054,6 +1079,7 @@ function startExercise(){
   }
 }
 function startRest(){
+  accrue();
   var e=exercises[session.exIdx],rest=e.rest||0;
   if(rest<=0){advance();return;}
   session.phase='rest';session.lastBeep=-1;session.paused=false;session.voiceAt={};
@@ -1137,6 +1163,7 @@ function adjustRest(sec){
 }
 function stopTimer(){if(session&&session.timer){clearInterval(session.timer);session.timer=null;}releaseWake();if(window.AndroidBridge&&AndroidBridge.keepAwake)AndroidBridge.keepAwake(false);}
 function finish(){
+  accrue();
   var secs=Math.round((Date.now()-session.startTs)/1000);
   var doneSets=session.doneSets;
   pushRecord(true);
@@ -1153,7 +1180,10 @@ function endWorkout(){
     session.doneSets++;
     session.doneMap[session.exIdx]=(session.doneMap[session.exIdx]||0)+1;
   }
-  if(session&&session.doneSets>0)pushRecord(false);
+  if(session&&session.doneSets>0){
+    accrue();
+    pushRecord(false);
+  }
   stopDemoMedia();
   $('#rest-time').hidden=true;$('#rest-adj').hidden=true;stopTimer();exselClose();session=null;endArm=0;
   if(window.FITMUSIC)FITMUSIC.stopWorkout();
@@ -1196,6 +1226,7 @@ function exselJump(i){
     session.doneSets++;
     session.doneMap[session.exIdx]=(session.doneMap[session.exIdx]||0)+1;
   }
+  accrue();
   session.exIdx=i;session.setIdx=1;
   startExercise();
 }
@@ -1256,13 +1287,88 @@ document.addEventListener('visibilitychange',function(){
 var trainLog=[];
 try{var _tl=JSON.parse(localStorage.getItem('fit_history_v1'));if(Array.isArray(_tl))trainLog=_tl;}catch(e){}
 function saveHistory(){localStorage.setItem('fit_history_v1',JSON.stringify(trainLog.slice(-500)));}
+function accrue(){ /* 累计当前动作阶段的有效时长（暂停不计） */
+  if(!session||session.phase!=='exercise')return;
+  var t=session.total>0?Math.max(0,Math.round(session.total-session.remaining)):0;
+  if(!session.accT)session.accT={};
+  session.accT[session.exIdx]=(session.accT[session.exIdx]||0)+t;
+}
 function pushRecord(done){
   if(!session)return;
+  var accT=session.accT||{},exs=[];
+  exercises.forEach(function(e,i){
+    var s=session.doneMap[i]||0;
+    if(s>0)exs.push({n:e.name,s:s,d:accT[i]||0});
+  });
   trainLog.push({t:Date.now(),sets:session.doneSets,total:estimate().sets,
     secs:Math.round((Date.now()-session.startTs)/1000),done:!!done,
-    names:exercises.map(function(e){return e.name;})});
+    names:exercises.map(function(e){return e.name;}),exs:exs});
   saveHistory();
 }
+/* ---------- 记录详情 + 写入 Apple 健康 ---------- */
+var curRec=null,HS_SHORTCUT='FitLog';
+function p2(n){return String(n).padStart(2,'0');}
+function fmtDT(t){var d=new Date(t);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+' '+p2(d.getHours())+':'+p2(d.getMinutes());}
+function isIOS(){var ua=navigator.userAgent||'';
+  if(/android/i.test(ua))return false;
+  return /iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function healthJSON(r){
+  var st=new Date(r.t-(r.secs||0)*1000);
+  return {name:'健身训练',min:Math.max(1,Math.round((r.secs||0)/6)/10),
+    start:st.getFullYear()+'-'+p2(st.getMonth()+1)+'-'+p2(st.getDate())+'T'+p2(st.getHours())+':'+p2(st.getMinutes())+':'+p2(st.getSeconds()),
+    sets:r.sets||0,dur:fmt(r.secs||0)};
+}
+function healthURL(r){return 'shortcuts://run-shortcut?name='+encodeURIComponent(HS_SHORTCUT)+'&input='+encodeURIComponent(JSON.stringify(healthJSON(r)));}
+function openRecDetail(r){
+  curRec=r;
+  var body=$('#rd-body');body.innerHTML='';
+  function row(k,v){var d=document.createElement('div');d.className='rd-row';
+    d.innerHTML='<span class="k">'+k+'</span><span class="v">'+v+'</span>';body.appendChild(d);}
+  row('🕐 结束时间',fmtDT(r.t));
+  row('⏱ 总用时',fmt(r.secs||0));
+  row('🏋️ 完成组数',(r.sets||0)+' / '+(r.total||0)+' 组');
+  row('状态',r.done?'✅ 完成':'⚠️ 中途结束');
+  if(r.exs&&r.exs.length){
+    var h=document.createElement('div');h.className='f-label';h.style.marginTop='16px';h.textContent='动作明细';body.appendChild(h);
+    r.exs.forEach(function(x){
+      var d=document.createElement('div');d.className='rd-ex';
+      d.innerHTML='<span class="n">'+esc(x.n)+'</span><span class="m">'+x.s+' 组 · '+(x.d>0?fmt(x.d):'自定节奏')+'</span>';
+      body.appendChild(d);
+    });
+  }else if(r.names&&r.names.length){
+    var h2=document.createElement('div');h2.className='f-label';h2.style.marginTop='16px';h2.textContent='动作（旧记录，无分组明细）';body.appendChild(h2);
+    var d2=document.createElement('div');d2.className='rd-ex';d2.innerHTML='<span class="n">'+esc(r.names.join('、'))+'</span>';body.appendChild(d2);
+  }
+  var ios=isIOS();
+  $('#rd-health').hidden=!ios;
+  $('#rd-hint').textContent=ios
+    ?('写入 Apple「健康」的体能训练（功能性力量训练）· 首次使用请先按聊天里的说明创建快捷指令「'+HS_SHORTCUT+'」')
+    :'「写入健康」目前支持 iPhone / iPad（通过快捷指令），Android 端暂不支持。';
+  $('#rd-err').textContent='';$('#rd-err').style.color='';
+  $('#rsheet').classList.add('show');
+}
+$('#rd-close').onclick=function(){$('#rsheet').classList.remove('show');};
+$('#rsheet').addEventListener('click',function(ev){if(ev.target===this)$('#rsheet').classList.remove('show');});
+$('#rd-health').onclick=function(){
+  if(!curRec)return;
+  var a=document.createElement('a');a.href=healthURL(curRec);
+  document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},400);
+  var er=$('#rd-err');er.style.color='var(--lime)';
+  er.textContent='已唤起快捷指令「'+HS_SHORTCUT+'」，请在弹出的快捷指令里确认写入 ✓';
+};
+$('#rd-copy').onclick=function(){
+  if(!curRec)return;
+  var txt=JSON.stringify(healthJSON(curRec)),er=$('#rd-err');
+  function ok(m){er.style.color='var(--lime)';er.textContent=m;}
+  function fail(m){er.style.color='';er.textContent=m;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ok('已复制训练数据 ✓');},function(){fail('复制失败，请手动记录');});
+  }else{
+    var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');ok('已复制训练数据 ✓');}catch(e){fail('复制失败，请手动记录');}
+    ta.remove();
+  }
+};
 function dayStart(off){var n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate()-off).getTime();}
 function weekCount(){
   var now=new Date(),dow=(now.getDay()+6)%7,start=dayStart(dow),n=0;
@@ -1327,9 +1433,10 @@ function renderHistory(){
     var txt=(d.getMonth()+1)+'月'+d.getDate()+'日 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     var row=document.createElement('div');row.className='hs-row';
     row.innerHTML='<div class="hs-top"><span class="hs-date">'+txt+'</span>'+
-      '<span class="hs-badge '+(r.done?'ok">完成':'part">中途')+'</span></div>'+
+      '<span class="hs-badge '+(r.done?'ok">完成':'part">中途')+'</span><span class="hs-arr">›</span></div>'+
       '<div class="hs-meta">'+r.sets+' / '+r.total+' 组 · '+fmt(r.secs)+'</div>'+
       (r.names&&r.names.length?'<div class="hs-names">'+esc(r.names.join('、'))+'</div>':'');
+    row.onclick=function(){openRecDetail(r);};
     list.appendChild(row);
   });
 }
