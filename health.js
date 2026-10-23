@@ -428,6 +428,60 @@
     return { added: added, merged: merged, skipped: skipped };
   }
 
+  /* ---------------- 安卓健康（Health Connect） ---------------- */
+
+  /**
+   * 原生桥接层。原生侧（MainActivity.java）暴露 AndroidBridge.healthStatus /
+   * requestHealthPermissions / readHealthData / openHealthSettings，
+   * 并通过 window.__onHealthStatus / __onHealthPermissions / __onHealthData 回调。
+   */
+  var AH = {
+    /** 安卓壳且桥可用 */
+    has: function () {
+      return !!(root.AndroidBridge && typeof root.AndroidBridge.healthStatus === 'function');
+    },
+
+    /** 调原生方法，用一次性全局回调包装成 Promise */
+    _call: function (fn, cbName, arg) {
+      return new Promise(function (resolve, reject) {
+        var settled = false;
+        root[cbName] = function (o) {
+          if (settled) return;
+          settled = true;
+          resolve(o || {});
+        };
+        try {
+          if (arg === undefined) root.AndroidBridge[fn]();
+          else root.AndroidBridge[fn](arg);
+        } catch (e) {
+          settled = true;
+          root[cbName] = null;
+          reject(e);
+        }
+      });
+    },
+
+    /** 健康数据服务状态：{available, sdkStatus, granted, missing} */
+    status: function () {
+      return AH._call('healthStatus', '__onHealthStatus');
+    },
+
+    /** 弹出系统授权界面 */
+    requestPermissions: function () {
+      return AH._call('requestHealthPermissions', '__onHealthPermissions');
+    },
+
+    /** 读取最近 N 天的健康数据 */
+    read: function (days) {
+      return AH._call('readHealthData', '__onHealthData', days || 30);
+    },
+
+    /** 打开系统「健康数据」设置页（永久拒绝授权时的兜底） */
+    openSettings: function () {
+      try { root.AndroidBridge.openHealthSettings(); } catch (e) { }
+    }
+  };
+
   /* ---------------- 导出核心能力（便于测试） ---------------- */
   root.HI = {
     parseXmlText: parseXmlText,
@@ -439,7 +493,8 @@
     parseDurText: parseDurText,
     mergeWorkouts: mergeWorkouts,
     activityTitle: activityTitle,
-    activityMap: ACT
+    activityMap: ACT,
+    androidHealth: AH
   };
 
   /* ================= 以下为界面部分（无 DOM 时跳过） ================= */
@@ -448,6 +503,8 @@
   var parsed = [];
   var selected = {};
   var lastImported = null;
+  var androidMode = false;      // 当前弹层是否处于「安卓健康」模式
+  var androidDays = 30;        // 读取天数
 
   function $(s) { return document.querySelector(s); }
   function esc(s) {
@@ -557,6 +614,99 @@
     updateImportBtn();
   }
 
+  /* ---------------- 安卓健康（Health Connect）界面 ---------------- */
+
+  function setAndroidMode(on) {
+    androidMode = !!on;
+    var m = $('#hmodal');
+    if (m) m.classList.toggle('mode-android', androidMode);
+    var t = $('#hi-title');
+    if (t) t.textContent = androidMode ? '📱 导入安卓健康数据' : '❤️ 导入 Apple 健康';
+    var blk = $('#hi-android-block');
+    if (blk) blk.hidden = !androidMode;
+    var b = $('#btn-android-health');
+    if (b) b.classList.toggle('on', androidMode);
+  }
+
+  function showAndroidSettings(on) {
+    var b = $('#ah-settings');
+    if (b) b.hidden = !on;
+  }
+
+  function androidSummary(data) {
+    var bits = [];
+    if (data.steps) bits.push('步数 ' + Math.round(data.steps));
+    if (data.weightKg) bits.push('体重 ' + (Math.round(data.weightKg * 10) / 10) + ' kg');
+    if (data.sleepMinutes) bits.push('睡眠 ' + Math.round(data.sleepMinutes / 60 * 10) / 10 + ' 小时');
+    return bits.length ? '（' + bits.join(' · ') + '）' : '';
+  }
+
+  /** 拉取并渲染安卓健康数据 */
+  function androidFetch(days) {
+    setStatus('正在读取健康数据…', '');
+    AH.read(days).then(function (data) {
+      if (!data || !data.ok) {
+        setStatus('读取失败：' + ((data && data.error) || '未知错误'), 'err');
+        return;
+      }
+      var list = normalizeExternal(data.workouts || []);
+      if (!list.length) {
+        setStatus('最近 ' + days + ' 天里没有找到训练记录。' + androidSummary(data), 'err');
+        parsed = [];
+        renderPreview();
+        return;
+      }
+      parsed = list;
+      initSelection(false);
+      renderPreview();
+      setStatus('已读取 ' + list.length + ' 条训练' + androidSummary(data) + '，已勾选 ' + countSel() + ' 条，可按需调整', 'ok');
+    }).catch(function (e) {
+      setStatus('读取失败：' + ((e && e.message) || e), 'err');
+    });
+  }
+
+  /** 检查服务 → 授权 → 读取 */
+  function androidLoad(days) {
+    androidDays = days || 30;
+    showAndroidSettings(false);
+    setStatus('正在检查健康数据服务…', '');
+    AH.status().then(function (st) {
+      if (!st || !st.available) {
+        setStatus('本机没有可用的「健康数据」服务。Android 14 及以上系统自带；更早的机型需先安装「Health Connect」应用。', 'err');
+        showAndroidSettings(true);
+        return;
+      }
+      var missing = st.missing || [];
+      if (missing.length) {
+        setStatus('需要授权读取健康数据，请在弹出的系统窗口中点「允许」。', '');
+        AH.requestPermissions().then(function (r) {
+          var m2 = (r && r.missing) || [];
+          if (m2.length) {
+            setStatus('还有 ' + m2.length + ' 项权限没授权。可在系统「健康数据」设置里手动打开。', 'err');
+            showAndroidSettings(true);
+          } else {
+            androidFetch(androidDays);
+          }
+        }).catch(function (e) {
+          setStatus('授权失败：' + ((e && e.message) || e), 'err');
+          showAndroidSettings(true);
+        });
+        return;
+      }
+      androidFetch(androidDays);
+    }).catch(function (e) {
+      setStatus('检查失败：' + ((e && e.message) || e), 'err');
+    });
+  }
+
+  /** 打开安卓健康导入弹层 */
+  function openAndroidSheet() {
+    if (!AH.has()) return;
+    setAndroidMode(true);
+    openSheet({ reset: true });
+    androidLoad(30);
+  }
+
   function openSheet(opts) {
     opts = opts || {};
     var el = $('#hmodal');
@@ -575,6 +725,7 @@
   function closeSheet() {
     var el = $('#hmodal');
     if (el) el.classList.remove('show');
+    setAndroidMode(false);
   }
 
   function handleFile(file) {
@@ -615,7 +766,7 @@
     if (typeof root.renderHistory === 'function') root.renderHistory();
     setTimeout(function () {
       closeSheet();
-      toast('已导入 Apple 健康数据 ✓');
+      toast(androidMode ? '已导入安卓健康数据 ✓' : '已导入 Apple 健康数据 ✓');
     }, 900);
   }
 
@@ -726,7 +877,32 @@
     if (modal) modal.addEventListener('click', function (e) { if (e.target.id === 'hmodal') closeSheet(); });
 
     var b1 = $('#btn-hi-import');
-    if (b1) b1.onclick = function () { openSheet({ reset: true }); };
+    if (b1) b1.onclick = function () { setAndroidMode(false); openSheet({ reset: true }); };
+
+    /* 安卓健康入口（仅安卓壳内显示） */
+    var ab = $('#btn-android-health');
+    if (ab) {
+      ab.hidden = !AH.has();
+      ab.onclick = function () { openAndroidSheet(); };
+    }
+
+    var abd = $('#btn-android-health-done');
+    if (abd) {
+      abd.hidden = !AH.has();
+      abd.onclick = function () { openAndroidSheet(); };
+    }
+
+    var ahPerm = $('#ah-perm');
+    if (ahPerm) ahPerm.onclick = function () { androidLoad(androidDays); };
+
+    var ahRead = $('#ah-read');
+    if (ahRead) ahRead.onclick = function () { androidLoad(androidDays); };
+
+    var ahSel = $('#ah-days');
+    if (ahSel) ahSel.onchange = function () { androidDays = parseInt(ahSel.value, 10) || 30; };
+
+    var ahSet = $('#ah-settings');
+    if (ahSet) ahSet.onclick = function () { AH.openSettings(); };
 
     var b2 = $('#btn-hi-done');
     if (b2) b2.onclick = function () { quickImport(); };
@@ -768,5 +944,6 @@
   }
 
   root.HI.openSheet = openSheet;
+  root.HI.openAndroidSheet = openAndroidSheet;
 
 })(typeof window !== 'undefined' ? window : globalThis);

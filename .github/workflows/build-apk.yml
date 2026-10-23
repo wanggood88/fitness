@@ -7,6 +7,7 @@ on:
       - 'android/**'
       - '.github/workflows/build-apk.yml'
       - 'index.html'
+      - 'health.js'
       - 'music.js'
       - 'demo.js'
       - 'demo3d.js'
@@ -30,7 +31,7 @@ jobs:
       - name: Bundle web assets into APK
         run: |
           mkdir -p android/app/src/main/assets/app
-          cp index.html music.js demo.js demo3d.js three.min.js sw.js manifest.json icon-180.png icon-512.png android/app/src/main/assets/app/
+          cp index.html health.js music.js demo.js demo3d.js three.min.js sw.js manifest.json icon-180.png icon-512.png android/app/src/main/assets/app/
           cp -r media voice splash android/app/src/main/assets/app/
 
       - name: Set up JDK 17
@@ -42,7 +43,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.11.1'
 
       - name: Restore signing keystore
         run: |

@@ -403,6 +403,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <button class="btn btn-ghost" id="btn-back" style="margin-top:10px"><span>返回编辑</span></button>
     <button class="btn btn-ghost" id="btn-seehis" style="margin-top:0"><span>📊 查看训练记录</span></button>
     <button class="btn btn-ghost" id="btn-hi-done" style="margin-top:10px"><span>❤️ 一键导入健康数据</span></button>
+    <button class="btn btn-ghost" id="btn-android-health-done" style="margin-top:0" hidden><span>📱 导入安卓健康数据</span></button>
   </section>
 
   <!-- 记录页 -->
@@ -424,6 +425,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
     <h2 class="sec">历史明细</h2>
     <div id="hs-list"></div>
     <div class="hs-actions">
+      <button class="btn btn-ghost" id="btn-android-health" style="margin:0" hidden><span>📱 导入安卓健康</span></button>
       <button class="btn btn-ghost" id="btn-hi-import" style="margin:0"><span>❤️ 导入健康数据</span></button>
       <button class="btn btn-ghost" id="btn-h-clear" style="margin:0"><span>清空记录</span></button>
     </div>
@@ -498,7 +500,27 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 <!-- Apple 健康导入 弹层 -->
 <div id="hmodal">
   <div class="sheet">
-    <h2>❤️ 导入 Apple 健康</h2>
+    <h2 id="hi-title">❤️ 导入 Apple 健康</h2>
+
+    <!-- 安卓健康（Health Connect）区块：仅安卓壳内显示 -->
+    <div id="hi-android-block" hidden>
+      <span class="f-label">直接从手机的「健康」应用读取训练（时长 / 心率 / 消耗 / 距离），自动与训练记录按时间合并。</span>
+      <div class="ah-row">
+        <span class="f-label">读取范围</span>
+        <select id="ah-days">
+          <option value="7">最近 7 天</option>
+          <option value="30" selected>最近 30 天</option>
+          <option value="90">最近 90 天</option>
+          <option value="180">最近半年</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="ah-perm" style="width:100%;margin-top:10px">🔐 授权并读取健康数据</button>
+      <button class="btn btn-ctrl" id="ah-read" style="width:100%;margin-top:10px">🔄 重新读取</button>
+      <button class="btn btn-ctrl" id="ah-settings" style="width:100%;margin-top:10px" hidden>⚙️ 打开系统「健康数据」设置</button>
+      <div class="hi-tip">首次使用会弹出系统的健康数据授权窗口，点「允许」即可。Android 14 及以上系统自带「健康」；更早的机型需先安装 <b>Health Connect</b> 应用。未授权历史数据的应用只能读取最近 30 天。</div>
+    </div>
+
+    <div id="hi-apple-block">
     <span class="f-label">把「健康」里的训练（时长 / 心率 / 消耗 / 距离）导进来，会自动与训练记录按时间合并；健康里有、应用里没有的训练会新增成记录。</span>
 
     <button class="btn btn-primary" id="hi-choose" style="width:100%;margin-top:14px">📂 选择「健康」导出文件（.zip / .xml）</button>
@@ -548,6 +570,8 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
         <button class="btn btn-ctrl" id="hi-paste-go" style="width:100%;margin-top:8px">导入这段 JSON</button>
       </div>
     </details>
+    </div><!-- /hi-apple-block -->
+
     <div class="f-err" id="hi-status"></div>
     <div class="hi-listwrap" id="hi-list"></div>
     <div class="sheet-btns">
@@ -572,6 +596,11 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 .hi-more-body code{background:#0d1117;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--lime);word-break:break-all;font-size:11px}
 #hi-paste{width:100%;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;padding:10px;resize:vertical}
 .hi-listwrap{max-height:34vh;overflow-y:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
+#hmodal.mode-android #hi-apple-block{display:none}
+#hmodal.mode-android #hi-android-block{display:block}
+.ah-row{display:flex;align-items:center;gap:10px;margin:12px 0 2px}
+.ah-row select{flex:1;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:14px;padding:10px}
+.hs-actions .btn.on{border-color:var(--lime);color:var(--lime)}
 .hi-bar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);padding:2px 2px 8px;gap:8px}
 .hi-links a{color:var(--sky);margin-left:12px;cursor:pointer}
 .hi-row{display:flex;gap:10px;align-items:flex-start;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
@@ -1678,6 +1707,6 @@ if('serviceWorker' in navigator && location.protocol==='https:' && !window.Andro
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
 <script src="music.js?v=18"></script>
-<script src="health.js?v=3"></script>
+<script src="health.js?v=4"></script>
 </body>
 </html>

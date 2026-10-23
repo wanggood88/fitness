@@ -1,17 +1,19 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
     namespace 'com.wanggood88.fit'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.wanggood88.fit'
-        minSdk 23
+        // Health Connect 客户端库要求 minSdk 26（Android 8.0）
+        minSdk 26
         targetSdk 35
-        versionCode 7
-        versionName '1.1.4'
+        versionCode 8
+        versionName '1.2.0'
     }
 
     signingConfigs {
@@ -35,12 +37,20 @@ android {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.webkit:webkit:1.10.0'
     implementation 'androidx.media:media:1.7.0'
+    implementation 'androidx.activity:activity:1.9.3'
+
+    // Health Connect：安卓「健康」数据读取
+    implementation 'androidx.health.connect:connect-client:1.1.0'
 
     constraints {
         // kotlin-stdlib 1.8 merged jdk7/jdk8 classes; force the empty 1.8.22 stubs

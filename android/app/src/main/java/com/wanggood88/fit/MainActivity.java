@@ -34,6 +34,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebSettingsCompat;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContract;
+import androidx.health.connect.client.HealthConnectClient;
+import androidx.health.connect.client.permission.HealthPermissionsRequestAppContract;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -44,7 +48,9 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 离线 WebView 壳：全部网页资源打进 APK（assets/app/），通过 WebViewAssetLoader
@@ -59,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "media";
     private static final int FLAG_KEEP_SCREEN_ON = 0x00000080;
 
+    private static final int HEALTH_PERM_REQ = 4101;
+    private static final String JS_HEALTH_RESULT = "window.__onHealthResult&&window.__onHealthResult(";
+
     private WebView web;
     private ValueCallback<Uri[]> fileCb;
     private MediaSessionCompat session;
@@ -67,9 +76,24 @@ public class MainActivity extends AppCompatActivity {
     private String lastTitle;
     private boolean notifPosted;
 
+    /* Health Connect 权限请求（launcher 必须在 Activity 启动前注册，故用字段初始化） */
+    private final ActivityResultLauncher<Set<? extends String>> healthPermLauncher =
+            registerForActivityResult(
+                    new HealthPermissionsRequestAppContract(AndroidHealth.PROVIDER_PKG),
+                    new androidx.activity.result.ActivityResultCallback<Set<? extends String>>() {
+                        @Override
+                        public void onActivityResult(Set<? extends String> granted) {
+                            Set<String> g = new LinkedHashSet<String>();
+                            if (granted != null) g.addAll(granted);
+                            emitHealthPermResult(g);
+                        }
+                    });
+    private Set<String> healthPendingPerms = new LinkedHashSet<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         web = new WebView(this);
         setContentView(web);
         nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -195,6 +219,87 @@ public class MainActivity extends AppCompatActivity {
         public void pickMedia() {
             runOnUiThread(new Runnable() { @Override public void run() { startNativePick(FILE_REQ_NATIVE_MEDIA); } });
         }
+
+        /* ---------- 安卓健康数据（Health Connect） ---------- */
+
+        /** 返回健康数据服务的可用状态：{available, sdkStatus, granted:[...], missing:[...]} */
+        @JavascriptInterface
+        public void healthStatus() {
+            final int status = AndroidHealth.sdkStatus(MainActivity.this);
+            final Set<String> granted = AndroidHealth.grantedPermissions(MainActivity.this);
+            final Set<String> missing = AndroidHealth.missingPermissions(MainActivity.this);
+            final JSONObject o = new JSONObject();
+            try {
+                o.put("available", status == HealthConnectClient.SDK_AVAILABLE);
+                o.put("sdkStatus", status);
+                o.put("granted", new JSONArray(granted));
+                o.put("missing", new JSONArray(missing));
+            } catch (Exception ignored) {}
+            emit("__onHealthStatus", o.toString());
+        }
+
+        /** 弹出系统健康权限授权界面 */
+        @JavascriptInterface
+        public void requestHealthPermissions() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    Set<String> missing = AndroidHealth.missingPermissions(MainActivity.this);
+                    if (missing.isEmpty()) {
+                        emitHealthPermResult(AndroidHealth.grantedPermissions(MainActivity.this));
+                        return;
+                    }
+                    healthPendingPerms = missing;
+                    try {
+                        healthPermLauncher.launch(missing);
+                    } catch (Throwable t) {
+                        emitHealthPermResult(new LinkedHashSet<String>());
+                    }
+                }
+            });
+        }
+
+        /** 读取最近 N 天的健康数据，结果以 JSON 回调给前端 */
+        @JavascriptInterface
+        public void readHealthData(final int days) {
+            AndroidHealth.readAsync(MainActivity.this, Math.max(1, Math.min(days, 365)),
+                    new AndroidHealth.Callback() {
+                        @Override public void onResult(JSONObject data) {
+                            emit("__onHealthData", data.toString());
+                        }
+                    });
+        }
+
+        /** 打开 Health Connect 的系统设置页（用户永久拒绝权限时的兜底） */
+        @JavascriptInterface
+        public void openHealthSettings() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    try {
+                        Intent i = AndroidHealth.manageDataIntent(MainActivity.this);
+                        if (i == null) i = AndroidHealth.installIntent();
+                        startActivity(i);
+                    } catch (Throwable t) {
+                        Toast.makeText(MainActivity.this, "无法打开健康数据设置", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        }
+    }
+
+    /* ---------- 健康数据回调 ---------- */
+
+    private void emit(String fn, String json) {
+        js("window." + fn + "&&window." + fn + "(" + json + ")");
+    }
+
+    private void emitHealthPermResult(Set<String> granted) {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("granted", new JSONArray(granted));
+            o.put("missing", new JSONArray(AndroidHealth.missingPermissions(this)));
+            o.put("available", AndroidHealth.isAvailable(this));
+        } catch (Exception ignored) {}
+        emit("__onHealthPermissions", o.toString());
     }
 
     private static final int FILE_REQ_NATIVE_AUDIO = 4002;
