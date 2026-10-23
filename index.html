@@ -1473,11 +1473,10 @@ function openRecDetail(r){
   if(ios){
     $('#rd-hint').textContent='❤️ 首次只需装一次快捷指令「FitLog」，之后点「写入 Apple 健康」即自动写入 · 点此展开说明';
     $('#rd-steps').innerHTML=
-      '<b>方式一（下载安装，先试这个）：</b><br>'+
-      '1️⃣ 点下方「📲 装快捷指令」→ 分享面板选 <b>Safari</b> 打开，文件自动下载<br>'+
-      '2️⃣ 打开「文件」App → <b>下载项</b> → 点 <b>FitLog.shortcut</b> → 快捷指令 App 弹出后点「添加快捷指令」<br>'+
-      '⚠️ 若提示"不受信任/无法导入"：先去 设置 → 快捷指令 开启「允许不受信任的快捷指令」（需先随便运行过一次快捷指令，开关才会出现）；若没有此开关，请直接用方式二<br><br>'+
-      '<b>方式二（手动建，100% 可用）：</b><br>'+
+      '<b>方式一（一键安装，推荐）：</b><br>'+
+      '1️⃣ 点下方「📲 装快捷指令」→ 点「添加快捷指令」即可（用的是 iCloud 官方分享链接）<br>'+
+      '2️⃣ 若没反应：复制链接到 Safari 打开 → 点「设置快捷指令」<br><br>'+
+      '<b>方式二（手动建，若上面装不上）：</b><br>'+
       '1️⃣ 快捷指令 → ＋ → 搜「<b>从输入获取字典</b>」添加（输入默认就是本 App 传来的数据）<br>'+
       '2️⃣ 搜「<b>记录体能训练</b>」添加：类型选 <b>功能性力量训练</b>；时长 → 变量 → 选字典里的 <b>min</b>（分钟）；开始 → 显示更多 → 开始时间 → 变量 → 字典里的 <b>start</b>；能量 → 变量 → <b>kcal</b>（可选）；距离 → 变量 → <b>dist</b>（可选）<br>'+
       '3️⃣ 点顶部名称改为 <b>FitLog</b> 保存 → 回到这里点「写入 Apple 健康」即可<br>'+
@@ -1500,23 +1499,15 @@ $('#rd-health').onclick=function(){
   er.textContent='已唤起快捷指令「'+HS_SHORTCUT+'」。若提示「未找到快捷指令」，先点「装快捷指令」安装。';
 };
 $('#rd-install').onclick=function(){
-  var er=$('#rd-err');
-  var u='https://wanggood88.github.io/fitness/FitLog.shortcut';
-  function copyLink(){
-    var ta=document.createElement('textarea');ta.value=u;document.body.appendChild(ta);ta.select();
-    try{document.execCommand('copy');}catch(e){}
-    ta.remove();
-    er.style.color='var(--lime)';
-    er.textContent='安装链接已复制 ✓ 请打开 Safari 粘贴到地址栏访问，文件会自动下载；然后打开「文件」App→下载项→点 FitLog.shortcut 安装。若导入被拒，请用下方方式二手动创建（1 分钟搞定）。';
-  }
-  if(navigator.share){
-    navigator.share({title:'FitLog 快捷指令安装',url:u}).then(function(){
-      er.style.color='var(--lime)';
-      er.textContent='请在分享面板选「Safari」打开，文件会自动下载；然后打开「文件」App→下载项→点 FitLog.shortcut → 快捷指令弹出后点「添加快捷指令」。若导入被拒，请用下方方式二手动创建。';
-    },function(){copyLink();});
-  }else{
-    copyLink();
-  }
+  var er=$('#rd-err');er.style.color='var(--lime)';
+  er.textContent='正在打开安装页… 若弹出「添加快捷指令」直接点添加即可。';
+  var ic='https://www.icloud.com/shortcuts/e155ec47441e4d9ea58898c5db5670a2';
+  var imp='shortcuts://import-workflow?url='+encodeURIComponent(ic);
+  var a=document.createElement('a');a.href=imp;document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},400);
+  setTimeout(function(){
+    er.style.color='';
+    er.textContent='若几秒内没反应：长按复制此链接 '+ic+' → Safari 打开 → 点「设置快捷指令」即可安装。';
+  },4000);
 };
 $('#rd-copy').onclick=function(){
   if(!curRec)return;
