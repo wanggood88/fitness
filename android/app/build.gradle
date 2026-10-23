@@ -12,8 +12,8 @@ android {
         // Health Connect 客户端库要求 minSdk 26（Android 8.0）
         minSdk 26
         targetSdk 35
-        versionCode 8
-        versionName '1.2.0'
+        versionCode 9
+        versionName '1.2.1'
     }
 
     signingConfigs {
