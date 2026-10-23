@@ -1441,7 +1441,7 @@ function healthJSON(r){
     notes:notes.join(' · ')
   };
 }
-function healthURL(r){return 'shortcuts://run-shortcut?name='+encodeURIComponent(HS_SHORTCUT)+'&input='+encodeURIComponent(JSON.stringify(healthJSON(r)));}
+function healthURL(r){return 'shortcuts://run-shortcut?name='+encodeURIComponent(HS_SHORTCUT)+'&input=text&text='+encodeURIComponent(JSON.stringify(healthJSON(r)));}
 function openRecDetail(r){
   curRec=r;
   var body=$('#rd-body');body.innerHTML='';
