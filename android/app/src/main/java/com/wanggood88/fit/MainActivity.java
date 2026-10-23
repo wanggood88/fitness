@@ -234,6 +234,8 @@ public class MainActivity extends AppCompatActivity {
                 o.put("sdkStatus", status);
                 o.put("granted", new JSONArray(granted));
                 o.put("missing", new JSONArray(missing));
+                // 已安装的厂商健康 App（国产手机据此提示改走导出文件导入）
+                o.put("vendorApps", new JSONArray(AndroidHealth.vendorApps(MainActivity.this)));
             } catch (Exception ignored) {}
             emit("__onHealthStatus", o.toString());
         }

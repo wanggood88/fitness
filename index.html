@@ -504,7 +504,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 
     <!-- 安卓健康（Health Connect）区块：仅安卓壳内显示 -->
     <div id="hi-android-block" hidden>
-      <span class="f-label">直接从手机的「健康」应用读取训练（时长 / 心率 / 消耗 / 距离），自动与训练记录按时间合并。</span>
+      <span class="f-label">方式一：直接读取系统「健康共享」里的训练（时长 / 心率 / 消耗 / 距离），自动与训练记录按时间合并。</span>
       <div class="ah-row">
         <span class="f-label">读取范围</span>
         <select id="ah-days">
@@ -517,7 +517,24 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <button class="btn btn-primary" id="ah-perm" style="width:100%;margin-top:10px">🔐 授权并读取健康数据</button>
       <button class="btn btn-ctrl" id="ah-read" style="width:100%;margin-top:10px">🔄 重新读取</button>
       <button class="btn btn-ctrl" id="ah-settings" style="width:100%;margin-top:10px" hidden>⚙️ 打开系统「健康数据」设置</button>
-      <div class="hi-tip">首次使用会弹出系统的健康数据授权窗口，点「允许」即可。Android 14 及以上系统自带「健康」；更早的机型需先安装 <b>Health Connect</b> 应用。未授权历史数据的应用只能读取最近 30 天。</div>
+      <div class="hi-tip">首次使用会弹出系统的健康数据授权窗口，点「允许」即可。Android 14 及以上系统自带「健康共享」；更早的机型需先安装 <b>Health Connect</b> 应用。未授权历史数据的应用只能读取最近 30 天。</div>
+
+      <hr class="ah-sep">
+      <div id="ah-vendor-box">
+      <span class="f-label"><b>方式二（国产手机推荐）</b>：导入运动 App 导出的文件</span>
+      <button class="btn btn-primary" id="ah-choose" style="width:100%;margin-top:10px">📂 选择运动 App 导出的文件（.csv / .zip）</button>
+      <input type="file" id="ah-file" accept=".csv,.tsv,.txt,.zip,text/csv,application/zip" hidden>
+      <details class="hi-more">
+        <summary>📖 各品牌怎么导出 ▾</summary>
+        <div class="hi-more-body">
+          <p style="margin:0 0 6px"><b>小米 / 红米</b>：小米运动健康 → 我的 → 右上角设置 → 账号与安全 → 注销账号 → <b>导出数据</b>（会邮件发 zip，密码在邮件里）；解压后找 <code>*sport_record*.csv</code>。也可在单次运动详情里「分享 → 导出数据」拿 CSV。</p>
+          <p style="margin:0 0 6px"><b>华为</b>：华为运动健康 → 运动 → 右上角「⋯」→ 数据导出 → 导出 CSV；或「设置 → 隐私 → 获取您的隐私副本」拿全量。</p>
+          <p style="margin:0 0 6px"><b>OPPO / 一加</b>：欢太健康 → 运动 → 右上角更多 → 数据导出（CSV）。</p>
+          <p style="margin:0 0 6px"><b>vivo / iQOO</b>：vivo 健康 → 我的 → 数据导出；导出的是 Excel 的话，请先用 WPS / Excel 另存为 <b>CSV</b> 再回来导入。</p>
+          <p style="margin:0 0 0"><b>说明</b>：国产运动 App 一般不把数据写进系统「健康共享」，所以方式一可能读不到数据，这时请用方式二。导出的 CSV 表头各家不同，本应用会自动识别中英文列名。</p>
+        </div>
+      </details>
+      </div>
     </div>
 
     <div id="hi-apple-block">
@@ -531,6 +548,9 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       ② 选「存储到文件」，保存到「文件」App<br>
       ③ 回到这里点上方按钮，选那个 <code>导出.zip</code> 即可
     </div>
+
+    <button class="btn btn-ctrl" id="hi-choose-csv" style="width:100%;margin-top:10px">📂 导入运动 App 导出的 CSV（小米 / 华为 / OPPO）</button>
+    <input type="file" id="hi-file-csv" accept=".csv,.tsv,.txt,.zip,text/csv,application/zip" hidden>
 
     <button class="btn btn-ctrl" id="hi-clip" style="width:100%;margin-top:10px">📋 一键导入（读剪贴板）</button>
     <div class="hi-tip">需先用快捷指令把数据放进剪贴板（设置一次，见下）。在主屏应用里也能用，因为剪贴板是系统级共享的。</div>
@@ -599,6 +619,9 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
 #hmodal.mode-android #hi-apple-block{display:none}
 #hmodal.mode-android #hi-android-block{display:block}
 .ah-row{display:flex;align-items:center;gap:10px;margin:12px 0 2px}
+.ah-sep{border:0;border-top:1px solid var(--line);margin:16px 0 12px}
+#ah-vendor-box{border:1px solid transparent;border-radius:12px;padding:2px;margin:0 -2px}
+#ah-vendor-box.hl{border-color:var(--lime);background:rgba(163,230,53,.08)}
 .ah-row select{flex:1;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:14px;padding:10px}
 .hs-actions .btn.on{border-color:var(--lime);color:var(--lime)}
 .hi-bar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);padding:2px 2px 8px;gap:8px}
@@ -1707,6 +1730,6 @@ if('serviceWorker' in navigator && location.protocol==='https:' && !window.Andro
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
 <script src="music.js?v=18"></script>
-<script src="health.js?v=4"></script>
+<script src="health.js?v=5"></script>
 </body>
 </html>

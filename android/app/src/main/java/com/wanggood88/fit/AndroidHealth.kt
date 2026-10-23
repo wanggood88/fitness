@@ -55,6 +55,39 @@ object AndroidHealth {
         HealthPermission.getReadPermission(SleepSessionRecord::class)
     )
 
+    /* ---------------- 厂商健康 App 探测 ---------------- */
+
+    /**
+     * 常见厂商健康 App 的包名。国产 ROM 的健康 App 普遍不写入 Health Connect，
+     * 探测到它们存在时，前端可以提示用户改用「导出文件导入」这条路。
+     */
+    private val VENDOR_APPS = linkedMapOf(
+        "小米运动健康" to listOf("com.miui.hm", "com.xiaomi.hm.health"),
+        "华为运动健康" to listOf("com.huawei.hwid", "com.huawei.health"),
+        "欢太健康" to listOf("com.heytap.health", "com.oppo.health"),
+        "vivo 健康" to listOf("com.vivo.health", "com.iqoo.health"),
+        "Zepp Life" to listOf("com.huami.midong", "com.amazfitmidong")
+    )
+
+    /** 已安装的厂商健康 App 名称列表（空表示都没装） */
+    @JvmStatic
+    fun vendorApps(context: Context): List<String> {
+        val pm = context.packageManager
+        val out = ArrayList<String>()
+        for ((label, pkgs) in VENDOR_APPS) {
+            for (pkg in pkgs) {
+                try {
+                    pm.getApplicationInfo(pkg, 0)
+                    out.add(label)
+                    break
+                } catch (t: Throwable) {
+                    // 未安装，继续下一个
+                }
+            }
+        }
+        return out
+    }
+
     /* ---------------- 可用性 ---------------- */
 
     /** SDK 状态：3=可用 2=provider 版本过旧 1=不可用 */
@@ -199,6 +232,7 @@ object AndroidHealth {
                 put("steps", stepsIn(c, filter))
                 put("weightKg", weightIn(c, filter))
                 put("sleepMinutes", sleepIn(c, filter))
+                put("vendorApps", org.json.JSONArray(vendorApps(context)))
             }
         }
     }

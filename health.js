@@ -168,6 +168,7 @@
       start: w.start, end: w.end, dur: Math.round(w.dur || 0),
       kcal: Math.round(kcal), hr: Math.round(hr), hrMax: Math.round(hrMax),
       dist: km ? Math.round(km * 100) / 100 : 0,
+      distUnit: km ? 'km' : '',
       source: w.source || '',
       id: 'h' + Math.abs(hash32((w.start || 0) + '|' + (w.end || 0) + '|' + (w.type || ''))).toString(36)
     };
@@ -276,6 +277,60 @@
     return 0;
   }
 
+  /**
+   * 枚举 zip 内全部条目。
+   * 国产厂商的导出包（小米/华为/vivo/OPPO）结构复杂：里面是若干 CSV 或 Excel，
+   * 靠文件名猜不出主数据文件，所以改成全部列出来再逐个判断内容。
+   */
+  function listZipEntries(file) {
+    var size = file.size;
+    var tailLen = Math.min(size, 65557);
+    return file.slice(size - tailLen).arrayBuffer().then(function (tb) {
+      var dv = new DataView(tb), eocd = -1, i;
+      for (i = tb.byteLength - 22; i >= 0; i--) {
+        if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+      }
+      if (eocd < 0) throw new Error('这不是有效的 zip 文件');
+      var count = u16(dv, eocd + 10);
+      var cdSize = u32(dv, eocd + 12);
+      var cdOff = u32(dv, eocd + 16);
+      if (cdOff === 0xffffffff || count === 0xffff) throw new Error('暂不支持 ZIP64，请先在「文件」App 里解压，再选择里面的文件');
+
+      return file.slice(cdOff, cdOff + cdSize).arrayBuffer().then(function (cb) {
+        var cd = new DataView(cb), p = 0, n, out = [];
+        for (n = 0; n < count; n++) {
+          if (cd.getUint32(p, true) !== 0x02014b50) break;
+          var method = u16(cd, p + 10);
+          var compSize = u32(cd, p + 20);
+          var nameLen = u16(cd, p + 28);
+          var extraLen = u16(cd, p + 30);
+          var commLen = u32(cd, p + 32);
+          var lho = u32(cd, p + 42);
+          var name = new TextDecoder('utf-8').decode(new Uint8Array(cb, p + 46, nameLen));
+          out.push({ name: name, lho: lho, compSize: compSize, method: method });
+          p += 46 + nameLen + extraLen + commLen;
+        }
+        return out;
+      });
+    });
+  }
+
+  /** 读出 zip 中某个条目的内容（自动处理 deflate 解压） */
+  function readZipEntryByName(file, entry) {
+    return file.slice(entry.lho, entry.lho + 30).arrayBuffer().then(function (lb) {
+      var lh = new DataView(lb);
+      if (lh.getUint32(0, true) !== 0x04034b50) throw new Error('zip 文件头损坏');
+      var start = entry.lho + 30 + u16(lh, 26) + u16(lh, 28);
+      var data = file.slice(start, start + entry.compSize);
+      if (entry.method === 0) return data;
+      if (entry.method !== 8) throw new Error('不支持的压缩方式');
+      if (typeof DecompressionStream === 'undefined') {
+        throw new Error('当前浏览器不支持直接解压，请先在「文件」App 里解压，再选择里面的文件');
+      }
+      return new Response(data.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+    });
+  }
+
   function readZipEntry(file) {
     var size = file.size;
     var tailLen = Math.min(size, 65557);
@@ -322,6 +377,254 @@
           return new Response(data.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
         });
       });
+    });
+  }
+
+  /* ---------------- 国产厂商导出的表格（CSV / TSV）解析 ----------------
+     华为运动健康、小米运动健康、欢太健康、vivo 健康 都支持把运动记录导出成
+     CSV（小米是 SPORT_*.csv，华为/OPPO/vivo 常见表头为中文）。
+     各家表头差异很大，所以这里做「列名模糊匹配」而不是写死字段顺序。
+     表头里同时带单位，例如「距离(米)」「时长(分钟)」「消耗(千卡)」。 */
+
+  // 把一行 CSV 拆成字段（支持双引号包裹、字段内逗号与转义引号）
+  function splitCsvLine(line, sep) {
+    var out = [], cur = '', i = 0, q = false;
+    while (i < line.length) {
+      var c = line.charAt(i);
+      if (q) {
+        if (c === '"') {
+          if (line.charAt(i + 1) === '"') { cur += '"'; i += 2; continue; }
+          q = false; i++; continue;
+        }
+        cur += c; i++; continue;
+      }
+      if (c === '"') { q = true; i++; continue; }
+      if (c === sep) { out.push(cur); cur = ''; i++; continue; }
+      cur += c; i++;
+    }
+    out.push(cur);
+    return out;
+  }
+
+  // 猜测分隔符：优先逗号，其次制表符
+  function guessSep(line) {
+    var c = (line.match(/,/g) || []).length;
+    var t = (line.match(/\t/g) || []).length;
+    return t > c ? '\t' : ',';
+  }
+
+  function cleanHeader(h) {
+    return String(h || '')
+      .replace(/^\uFEFF/, '')
+      .replace(/[（(].*?[)）]/g, '')   // 去掉「(米)」这类单位后缀
+      .replace(/[\s_\-]+/g, '')
+      .toLowerCase();
+  }
+
+  // 列名 → 语义字段
+  var CSV_COLS = [
+    ['start', ['开始时间', '运动开始时间', '运动时间', '开始日期', 'starttime', 'startdate', 'start', 'date']],
+    ['end', ['结束时间', '运动结束时间', 'endtime', 'enddate', 'end']],
+    ['dur', ['时长', '运动时长', '持续时间', '用时', 'duration', 'sporttime', 'sporttimeminutes', 'minutes', 'sec', '秒']],
+    ['type', ['运动类型', '运动名称', '运动项目', '项目', '类型', 'type', 'sporttype', 'activity', '运动']],
+    ['kcal', ['消耗', '消耗热量', '卡路里', '热量', 'calories', 'calorie', 'kcal', 'totalenergyburned', '能量']],
+    ['dist', ['距离', '总距离', '运动距离', 'distance', 'totaldistance']],
+    ['distUnit', ['距离单位', 'distanceunit', 'unit']],
+    ['hr', ['平均心率', '心率', 'avheartrate', 'avgheartrate', 'heartrate', '平均心率bpm', 'hr']],
+    ['hrMax', ['最大心率', '最高心率', 'maxheartrate', 'hrMax', 'maxhr']],
+    ['steps', ['步数', '总步数', 'steps', 'stepcount', 'totalsteps']]
+  ];
+
+  function matchCsvCol(h) {
+    var c = cleanHeader(h);
+    if (!c) return '';
+    var i, j, list, key;
+    for (i = 0; i < CSV_COLS.length; i++) {
+      list = CSV_COLS[i][1];
+      for (j = 0; j < list.length; j++) {
+        key = cleanHeader(list[j]);
+        if (!key) continue;
+        if (c === key) return CSV_COLS[i][0];
+      }
+    }
+    // 再做包含匹配（表头可能有前后缀，如「本次消耗(千卡)」）
+    for (i = 0; i < CSV_COLS.length; i++) {
+      list = CSV_COLS[i][1];
+      for (j = 0; j < list.length; j++) {
+        key = cleanHeader(list[j]);
+        if (key.length >= 2 && c.indexOf(key) >= 0) return CSV_COLS[i][0];
+      }
+    }
+    return '';
+  }
+
+  // 从表头判断单位：距离列的表头里带「米」还是「公里」
+  function distUnitFromHeader(h) {
+    var s = String(h || '');
+    if (/公里|千米|\bkm\b/i.test(s)) return 'km';
+    if (/\bmi\b|英里/i.test(s)) return 'mi';
+    return 'm';
+  }
+
+  // 厂商的运动类型名 → Apple 风格 type（复用前端的 ACT 表拿到中文标题）
+  function vendorTypeToApple(t) {
+    var s = String(t || '').trim();
+    if (!s) return 'HKWorkoutActivityTypeOther';
+    var map = [
+      [/跑步|户外跑|road.?run|run/i, 'HKWorkoutActivityTypeRunning'],
+      [/健走|步行|走路|走|walk/i, 'HKWorkoutActivityTypeWalking'],
+      [/骑行|单车|自行车|自行车|骑行|cycle|cycl|biking/i, 'HKWorkoutActivityTypeCycling'],
+      [/游泳|swim/i, 'HKWorkoutActivityTypeSwimming'],
+      [/力量|举重|器械|撸铁|weight|strength|gym/i, 'HKWorkoutActivityTypeTraditionalStrengthTraining'],
+      [/瑜伽|yoga/i, 'HKWorkoutActivityTypeYoga'],
+      [/普拉提|pilates/i, 'HKWorkoutActivityTypePilates'],
+      [/椭圆|elliptic/i, 'HKWorkoutActivityTypeElliptical'],
+      [/划船|row/i, 'HKWorkoutActivityTypeRowing'],
+      [/爬楼|爬楼梯|楼梯|stair/i, 'HKWorkoutActivityTypeStairClimbing'],
+      [/跳绳|jump.?rope/i, 'HKWorkoutActivityTypeJumpRope'],
+      [/拉伸|柔韧|flexib|stretch/i, 'HKWorkoutActivityTypeFlexibility'],
+      [/hiit|间歇|高强度/i, 'HKWorkoutActivityTypeHighIntensityIntervalTraining'],
+      [/徒步|登山|爬山|hiking/i, 'HKWorkoutActivityTypeHiking'],
+      [/羽毛球|badminton/i, 'HKWorkoutActivityTypeBadminton'],
+      [/网球|tennis/i, 'HKWorkoutActivityTypeTennis'],
+      [/篮球|basketball/i, 'HKWorkoutActivityTypeBasketball'],
+      [/足球|soccer/i, 'HKWorkoutActivityTypeSoccer'],
+      [/动感单车|团课|课程|exercise|training|健身/i, 'HKWorkoutActivityTypeOther']
+    ];
+    for (var i = 0; i < map.length; i++) {
+      if (map[i][0].test(s)) return map[i][1];
+    }
+    return 'HKWorkoutActivityTypeOther';
+  }
+
+  /**
+   * 解析 CSV / TSV 文本为训练记录数组。
+   * 只取含「开始时间 + 时长(或结束时间)」的行，避免把日常活动表也当训练。
+   */
+  function parseCsvText(text) {
+    if (!text) return [];
+    // 去掉 BOM，统一换行
+    text = String(text).replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var lines = text.split('\n').filter(function (l) { return l.trim().length; });
+    if (!lines.length) return [];
+
+    var sep = guessSep(lines[0]);
+    var head = splitCsvLine(lines[0], sep);
+    var cols = {}, i, j;
+    for (i = 0; i < head.length; i++) {
+      var key = matchCsvCol(head[i]);
+      if (key && !cols[key]) cols[key] = i;
+    }
+    // 至少要能定位开始时间，否则这个文件不是运动记录
+    if (cols.start === undefined) return [];
+
+    // 仅有「开始/结束时间」不足以说明是运动记录（睡眠表、每日汇总表也有）。
+    // 必须再命中一个运动语义列：运动类型 / 时长 / 消耗 / 距离 / 心率。
+    var sportsHit = ['type', 'dur', 'kcal', 'dist', 'hr', 'hrMax'].some(function (k) {
+      return cols[k] !== undefined;
+    });
+    if (!sportsHit) return [];
+
+    // 睡眠表误判防护：表头里出现睡眠相关词，但没有运动类型/消耗/距离/心率时跳过
+    var headTxt = head.join(' ');
+    var sleepish = /睡眠|深睡|浅睡|快睡|rem|入睡|awake|wake/i.test(headTxt);
+    var movesish = cols.type !== undefined || cols.kcal !== undefined ||
+      cols.dist !== undefined || cols.hr !== undefined || cols.hrMax !== undefined;
+    if (sleepish && !movesish) return [];
+
+    var distIsKm = cols.dist !== undefined ? distUnitFromHeader(head[cols.dist]) : 'm';
+
+    function cell(row, k) {
+      if (cols[k] === undefined) return '';
+      return String(row[cols[k]] === undefined ? '' : row[cols[k]]).trim();
+    }
+
+    var out = [];
+    for (j = 1; j < lines.length; j++) {
+      var row = splitCsvLine(lines[j], sep);
+      if (!row.length) continue;
+
+      var startRaw = cell(row, 'start');
+      var start = parseAppleDate(startRaw);
+      if (!start) continue;
+
+      var end = 0;
+      if (cols.end !== undefined) end = parseAppleDate(cell(row, 'end'));
+
+      var dur = 0;
+      var durRaw = cell(row, 'dur');
+      if (durRaw) {
+        // 「1小时30分」「45:30」「90」都能解析
+        dur = parseDurText(durRaw);
+        if (dur && dur < 1000 && !/[:时]/.test(durRaw)) {
+          // 只有纯数字时，判断是秒还是分钟：时长超过 10 小时按秒，否则按分钟
+          if (dur <= 240) dur *= 60;
+        }
+      }
+      if (!end && start && dur) end = start + dur * 1000;
+      if (!dur && start && end) dur = Math.round((end - start) / 1000);
+      if (!end) continue;
+      if (dur < 60) continue;   // 忽略太短的碎片
+
+      var dist = num(cell(row, 'dist'));
+      var du = distIsKm;
+      if (cols.distUnit !== undefined) {
+        var u = cleanHeader(cell(row, 'distUnit'));
+        if (/km|公里|千米/.test(u)) du = 'km';
+        else if (/mi|英里/.test(u)) du = 'mi';
+        else if (/m|米/.test(u)) du = 'm';
+      }
+
+      var w = {
+        type: vendorTypeToApple(cell(row, 'type')),
+        title: cell(row, 'type') || '',
+        start: start, end: end, dur: dur,
+        kcal: num(cell(row, 'kcal')),
+        hr: num(cell(row, 'hr')), hrMax: num(cell(row, 'hrMax')),
+        dist: dist, distUnit: du,
+        source: '运动健康导出'
+      };
+      var nw = normalizeWorkout(w);
+      if (nw) out.push(nw);
+    }
+    return out;
+  }
+
+  /** 从厂商导出的 zip 包里找出运动记录 CSV 并解析 */
+  function parseVendorZip(file) {
+    return listZipEntries(file).then(function (entries) {
+      var cands = entries.filter(function (e) {
+        if (/\/$/.test(e.name)) return false;
+        return /\.csv$|\.tsv$|\.txt$/i.test(e.name) && e.compSize > 0;
+      });
+      // 优先带 SPORT / sport / 运动 关键字的条目
+      cands.sort(function (a, b) {
+        function score(n) {
+          var s = 0;
+          if (/sport/i.test(n)) s += 10;
+          if (/运动|record|workout|锻炼/i.test(n)) s += 6;
+          if (/activity|step|sleep|heart/i.test(n)) s -= 4;
+          return s;
+        }
+        return score(b.name) - score(a.name);
+      });
+
+      if (!cands.length) throw new Error('压缩包里没有找到 CSV 数据文件');
+
+      // 逐个尝试，直到解析出运动记录
+      var idx = 0;
+      function tryNext() {
+        if (idx >= cands.length) return Promise.resolve([]);
+        var e = cands[idx++];
+        return readZipEntryByName(file, e).then(function (blob) {
+          return blob.text().then(function (txt) {
+            var list = parseCsvText(txt);
+            if (list.length) return list;
+            return tryNext();
+          });
+        }).catch(function () { return tryNext(); });
+      }
+      return tryNext();
     });
   }
 
@@ -492,6 +795,10 @@
     parsePayload: parsePayload,
     parseDurText: parseDurText,
     mergeWorkouts: mergeWorkouts,
+    parseCsvText: parseCsvText,
+    parseVendorZip: parseVendorZip,
+    listZipEntries: listZipEntries,
+    vendorTypeToApple: vendorTypeToApple,
     activityTitle: activityTitle,
     activityMap: ACT,
     androidHealth: AH
@@ -505,6 +812,7 @@
   var lastImported = null;
   var androidMode = false;      // 当前弹层是否处于「安卓健康」模式
   var androidDays = 30;        // 读取天数
+  var androidVendorApps = [];  // 已检测到的厂商健康 App
 
   function $(s) { return document.querySelector(s); }
   function esc(s) {
@@ -645,15 +953,22 @@
   function androidFetch(days) {
     setStatus('正在读取健康数据…', '');
     AH.read(days).then(function (data) {
+      // 原生读不到厂商 App 信息时，用状态阶段拿到的兜底
+      if (data && !data.vendorApps && androidVendorApps.length) {
+        data.vendorApps = androidVendorApps.slice();
+      }
       if (!data || !data.ok) {
         setStatus('读取失败：' + ((data && data.error) || '未知错误'), 'err');
         return;
       }
       var list = normalizeExternal(data.workouts || []);
       if (!list.length) {
-        setStatus('最近 ' + days + ' 天里没有找到训练记录。' + androidSummary(data), 'err');
+        setStatus('最近 ' + days + ' 天里没有读到训练记录。' + androidSummary(data) +
+          '\n\n' + vendorHint(data) +
+          '请往下拉，改用「方式二」导入运动 App 导出的文件。', 'err');
         parsed = [];
         renderPreview();
+        highlightVendorPath();
         return;
       }
       parsed = list;
@@ -671,12 +986,16 @@
     showAndroidSettings(false);
     setStatus('正在检查健康数据服务…', '');
     AH.status().then(function (st) {
+      androidVendorApps = (st && st.vendorApps) || [];
       if (!st || !st.available) {
-        setStatus('本机没有可用的「健康数据」服务。Android 14 及以上系统自带；更早的机型需先安装「Health Connect」应用。', 'err');
+        setStatus('本机没有可用的「健康共享」服务。Android 14 及以上系统自带；更早的机型需先安装「Health Connect」应用。\n\n' +
+          '如果你是国产手机（小米 / 华为 / OPPO / vivo），建议直接用下方的「方式二」导入运动 App 导出的文件。', 'err');
         showAndroidSettings(true);
+        highlightVendorPath();
         return;
       }
       var missing = st.missing || [];
+      // 即使能授权，若本机装的是国行健康 App，也要提前告知读取可能为空
       if (missing.length) {
         setStatus('需要授权读取健康数据，请在弹出的系统窗口中点「允许」。', '');
         AH.requestPermissions().then(function (r) {
@@ -696,6 +1015,52 @@
       androidFetch(androidDays);
     }).catch(function (e) {
       setStatus('检查失败：' + ((e && e.message) || e), 'err');
+    });
+  }
+
+  /** 根据已安装的厂商健康 App，给出针对性提示 */
+  function vendorHint(data) {
+    var apps = (data && data.vendorApps) || [];
+    if (apps.length) {
+      return '检测到你装了「' + apps.join('」「') + '」。国行版本通常不会把数据写进系统「健康共享」，' +
+        '所以这里读不到是正常的。\n\n';
+    }
+    return '国产手机（小米 / 华为 / OPPO / vivo）的健康 App 通常不会把数据写进系统「健康共享」，' +
+      '所以这里可能是空的。\n\n';
+  }
+
+  /** 把「方式二」区块高亮出来，引导用户改走文件导入 */
+  function highlightVendorPath() {
+    var box = $('#ah-vendor-box');
+    if (box) box.classList.add('hl');
+    var btn = $('#ah-choose');
+    if (btn && btn.scrollIntoView) {
+      try { btn.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { }
+    }
+  }
+
+  /** 处理用户选择的厂商导出文件（.csv / .zip / .txt） */
+  function handleVendorFile(file) {
+    setStatus('正在读取「' + file.name + '」…', '');
+    var listBox = $('#hi-list');
+    if (listBox) listBox.innerHTML = '';
+    var impBtn = $('#hi-import');
+    if (impBtn) impBtn.hidden = true;
+
+    var p = /\.zip$/i.test(file.name)
+      ? parseVendorZip(file)
+      : file.text().then(function (txt) { return parseCsvText(txt); });
+
+    return p.then(function (list) {
+      if (!list.length) {
+        throw new Error('这个文件里没有识别到运动记录。国产 App 的导出格式各不相同，如果导出的是 Excel(.xlsx)，请先用 WPS 或 Excel 另存为 CSV 再导入');
+      }
+      parsed = list;
+      initSelection(false);
+      renderPreview();
+      setStatus('已识别 ' + list.length + ' 条训练，已勾选 ' + countSel() + ' 条，可按需调整', 'ok');
+    }).catch(function (e) {
+      setStatus('导入失败：' + ((e && e.message) || e), 'err');
     });
   }
 
@@ -904,11 +1269,31 @@
     var ahSet = $('#ah-settings');
     if (ahSet) ahSet.onclick = function () { AH.openSettings(); };
 
+    /* 国产厂商导出文件导入 */
+    var avChoose = $('#ah-choose'), avFile = $('#ah-file');
+    if (avChoose && avFile) {
+      avChoose.onclick = function () { avFile.value = ''; avFile.click(); };
+      avFile.onchange = function () {
+        var f = this.files && this.files[0];
+        if (f) handleVendorFile(f);
+      };
+    }
+
     var b2 = $('#btn-hi-done');
     if (b2) b2.onclick = function () { quickImport(); };
 
     var clip = $('#hi-clip');
     if (clip) clip.onclick = function () { quickImport(); };
+
+    /* 运动 App 导出的 CSV（小米 / 华为 / OPPO 等），任何平台都能用 */
+    var csvChoose = $('#hi-choose-csv'), csvFile = $('#hi-file-csv');
+    if (csvChoose && csvFile) {
+      csvChoose.onclick = function () { csvFile.value = ''; csvFile.click(); };
+      csvFile.onchange = function () {
+        var f = this.files && this.files[0];
+        if (f) handleVendorFile(f);
+      };
+    }
 
     var pasteGo = $('#hi-paste-go');
     if (pasteGo) pasteGo.onclick = function () {
