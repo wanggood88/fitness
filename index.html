@@ -517,7 +517,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
       <button class="btn btn-primary" id="ah-perm" style="width:100%;margin-top:10px">🔐 授权并读取健康数据</button>
       <button class="btn btn-ctrl" id="ah-read" style="width:100%;margin-top:10px">🔄 重新读取</button>
       <button class="btn btn-ctrl" id="ah-settings" style="width:100%;margin-top:10px" hidden>⚙️ 打开系统「健康数据」设置</button>
-      <div class="hi-tip">首次使用会弹出系统的健康数据授权窗口，点「允许」即可。Android 14 及以上系统自带「健康共享」；更早的机型需先安装 <b>Health Connect</b> 应用。未授权历史数据的应用只能读取最近 30 天。</div>
+      <div class="hi-tip">首次使用会弹出系统的健康数据授权窗口，点「允许」即可。Android 14 及以上系统自带「健康共享」；更早的机型需先安装 <b>Health Connect</b> 应用。未授权历史数据的应用只能读取最近 30 天。<br><b>谁能读到</b>：Keep、咕咚、悦跑圈等第三方健身 App（需在其设置里开启「同步健康数据」）写入的数据可以直接读到；<b>手机自带的厂商健康 App（小米运动健康 / 华为运动健康 / 欢太健康 / vivo 健康的国行版）不写入</b>——它们走各自的私有生态，这类数据请用下方「方式二」导入。</div>
 
       <hr class="ah-sep">
       <div id="ah-vendor-box">
@@ -531,7 +531,7 @@ h2.sec{font-size:14px;color:var(--dim);font-weight:600;margin:16px 0 8px}
           <p style="margin:0 0 6px"><b>华为</b>：华为运动健康 → 运动 → 右上角「⋯」→ 数据导出 → 导出 CSV；或「设置 → 隐私 → 获取您的隐私副本」拿全量。</p>
           <p style="margin:0 0 6px"><b>OPPO / 一加</b>：欢太健康 → 运动 → 右上角更多 → 数据导出（CSV）。</p>
           <p style="margin:0 0 6px"><b>vivo / iQOO</b>：vivo 健康 → 我的 → 数据导出；导出的是 Excel 的话，请先用 WPS / Excel 另存为 <b>CSV</b> 再回来导入。</p>
-          <p style="margin:0 0 0"><b>说明</b>：国产运动 App 一般不把数据写进系统「健康共享」，所以方式一可能读不到数据，这时请用方式二。导出的 CSV 表头各家不同，本应用会自动识别中英文列名。</p>
+          <p style="margin:0 0 0"><b>说明</b>：手机自带的厂商健康 App 国行版不把数据写进系统「健康共享」，所以这类数据方式一读不到，请用方式二；Keep 等第三方健身 App 写入的数据方式一直接可用。导出的 CSV 表头各家不同，本应用会自动识别中英文列名。</p>
         </div>
       </details>
       </div>
@@ -1730,6 +1730,6 @@ if('serviceWorker' in navigator && location.protocol==='https:' && !window.Andro
 <script src="three.min.js"></script>
 <script src="demo3d.js?v=7"></script>
 <script src="music.js?v=18"></script>
-<script src="health.js?v=5"></script>
+<script src="health.js?v=6"></script>
 </body>
 </html>
